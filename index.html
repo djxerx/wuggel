@@ -391,6 +391,40 @@
     .hs-empty { color: var(--muted); font-size: 14px; padding: 20px 0; }
     .btn-row  { display: flex; gap: 12px; justify-content: center; }
 
+    /* ── Quality gate card ───────────────────────────────── */
+    .quality-card {
+      background: var(--panel);
+      border: 1px solid #374151;
+      border-radius: 24px;
+      padding: 36px 32px;
+      text-align: center;
+      width: min(320px, 90vw);
+      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .quality-card .q-icon { font-size: 44px; margin-bottom: 10px; }
+    .quality-card h2      { font-size: 22px; margin-bottom: 12px; }
+    .quality-card p       { font-size: 14px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+    .quality-card strong  { color: var(--text); }
+
+    /* ── Result word tabs ────────────────────────────────── */
+    .result-tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+    .result-tab {
+      flex: 1;
+      padding: 7px 4px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #1f2937;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .result-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Utility ─────────────────────────────────────────── */
+    .vis-hidden { display: none !important; }
+
     /* ── Floating score pop ──────────────────────────────── */
     .score-pop {
       position: fixed;
@@ -467,11 +501,31 @@
     <div class="result-label">Final Score</div>
     <div class="result-final" id="finalScore">0</div>
     <div class="result-stats"  id="resultStats"></div>
+    <div class="result-tabs">
+      <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
+      <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
+    </div>
     <div class="result-word-list" id="resultWordList"></div>
+    <div class="result-word-list vis-hidden" id="missedWordList"></div>
     <div class="btn-row">
       <button class="play-btn" onclick="newGame()">New Game</button>
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
               onclick="showHighScores()">High Scores</button>
+    </div>
+  </div>
+</div>
+
+<!-- Board quality gate overlay -->
+<div class="overlay hidden" id="qualityOverlay">
+  <div class="quality-card">
+    <div class="q-icon">⚠️</div>
+    <h2>Sparse Board</h2>
+    <p>This layout only has <strong><span id="qualityCount">0</span> possible words</strong>.</p>
+    <p>Play anyway or pick a different seed?</p>
+    <div class="btn-row" style="margin-top:24px">
+      <button class="play-btn" onclick="playAnywayFromQuality()">Play Anyway</button>
+      <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
+              onclick="newBoardFromQuality()">New Board</button>
     </div>
   </div>
 </div>
@@ -531,7 +585,7 @@ function playSound(name) {
 // ═══════════════════════════════════════════════════════════
 const DICT_FILE = 'words.txt';
 
-const BUILTIN_RAW = `aa ab ad ae ag ah ai al am an ar as at aw ax ay ba be bi bo by da de do ed ef eh el em en er es et ex fa fe gi go ha he hi hm ho id if in is it jo ka ki la li lo ma me mi mm mo mu my na ne no nu od oe of oh oi om on op or os ow ox oy pa pe pi qi re sh si so ta ti to uh um un up us ut we wo xi xu ya ye yo za ace act add age ago aid aim air ale all ant any ape apt arc are ark arm art ash ask ate awe axe aye bad bag ban bar bat bay bed bet big bit bow box boy bud bug bun bus but buy bye can cap car cat cop cow cry cup cut dad day den dew did die dig dim dip dog dot dry dub dug dye ear eat eel egg ego elk elm end era eve ewe eye fad fan far fat fax fed few fib fig fin fit fly fog for fox fry fun fur gag gap gas gel gem get gig gin god got gum gun gut guy gym had ham has hat hay hem hen her hew hex hid him hip his hit hog hop hot how hub hug hum hut ice ill inn ion ire ivy jab jag jam jar jaw jet jig job jot joy jug jut key kid kin kit lab lag lap law lay leg let lid lip lit log lot low lug mad man map mat may men met mob mom mop mud mug nag nap net nip nob nod nor not now nun oak odd ode off oil old one opt ore our out own pad pan par pat pay pea peg pen pet pie pig pin pit pod pop pot pro pub pun pup put rag ram ran rap rat raw ray red ref rep rib rid rig rim rip rob rod rot row rub rug rum run rut rye sad sag sap sat saw say sea set sew shy sin sip sir sit six ski sky sob sod son spa spy sub sue sum sun tab tan tap tar tax tea ten tie tin tip toe ton top toy tub tug two use van vat vet via vie vow wag war wax web wed wet who wig win wit woe won zoo able acid aged also alto area army arts aria back bald ball band bang bare bark barn base bash bask bath beam bean bear beat been beer bell belt bend bile bind bird bite blow blue boat bold bolt bomb bone book boom born boss bowl brag bran brew buck bulb bulk bull bump burn buzz cage cake calf call calm came camp cane card care cast cave cell cent chef chew chin chip chop city clad clam clap clip clod clog clot clue coal coat code coil coin cold colt come cord core cork corn cost crab crew crib crop crow cube cuff cult cure curl cute damp dare dark dart data date dawn dead deaf deal dean dear debt deck deep deer deny desk dice diet dirt disc dish disk dock dome done door dove down drag draw drip drop drum dual duel dunk dusk dust duty each earl earn ease east edge emit epic even ever exam exit face fact fade fail fair fake fall fame farm fate feed feel fell felt fern file fill film find firm fish fist flag flat flaw fled flew flex flip flit flog flow foam fold folk fond food fool foot ford fork form fort foul four fowl fray free frog fuel full fume fund fuse fuzz gale gall game gave gaze gear gill give glad glee glow glue goal goat goes gold golf gone good gore gown grab grad grit grow grub gulf gull gulp gust guts hack hail hair half hall halt hand hang hard harm harp hash haul have hawk head heat heel heir helm help herb herd here hill hive hoax hold hole holy home hood hook hope horn hose host hull hunt hurl hymn idea idle inch info iris iron itch item jade jail jest join joke jolt jump junk jury just keen keep keel kern kill kind king kink kiss knob knot know lace lack lake lamb lamp land lane lash last late lava lawn lazy lead leaf leak lean leap lend lens less levy lick life lift like lime link lint lion list live load loam loan lobe loft lone look loom loop lose loss love luck lung lure mace made mail main make male mall malt mane many mare mark mast mate math maze meal mean meat melt memo mere mesh mile mild milk mill mind mine mint miss mist mock mode mold mole monk moon more moss most moth move mule must nail name nape navy near neat need nest news next nick none noon norm nose note noun nude null numb oath obey odor okay omen once only open oral over pace pack page pail pair pale palm pane park part pass past path pave peak peel perk pick pier pile pill pine pipe pity plan play plea plot plow plum plus poem pole poll pond pool poor pore port pose post pour prey prod prop pull pump pure push quiz race rack raid rail rain rank rare rash rate rave read real reap rear rely rend rent rest rice rich ride ring riot rise risk road roam roar robe rock role roll roof rook room root rope rose rude ruin rule rush rust safe sage sail sake sale sand sane save scan scar seal seat seed seek seem seep sell send shed shin ship shoe shop shot show silk sing sink sire size skim skin skip slab slam slap sled slim slip slow slug slum smug snap snag snow soak sock sofa soil sole song soon sort soul span spar spot spur stab stag star stay stem step stew stir stop stub suit sung sunk surf swan swap sway tail take tale talk tall tame task team tear tell term test than that them then they thin this thus tide tilt toad toil toll tomb tone tool tore torn tour tram trap trim trio trip trot true tube tuck tusk twig type undo unit upon urge vain vale vane vase vast veil vein very vest vial vine volt vote wade wage wake walk wall wane ward warm warp wash wave weak wean wear weed week weep well welt went were west whim whip wide wild will wilt wind wine wing wire wise wish wolf womb word wore worm worn wrap yell yoke your zeal zest zinc zone zoom`;
+const BUILTIN_RAW = `aa ab ad ae ag ah ai al am an ar as at aw ax ay ba be bi bo by da de do ed ef eh el em en er es et ex fa fe gi go ha he hi hm ho id if in is it jo ka ki la li lo ma me mi mm mo weak wean wear weed week weep well welt went were west whim whip wide wild will wilt wind wine wing wire wise wish wolf womb word wore worm worn wrap yell yoke your zeal zest zinc zone zoom`;
 
 let WORDS = new Set(BUILTIN_RAW.trim().split(/\s+/).filter(w => w.length >= 2));
 
@@ -571,6 +625,58 @@ const MULT_POOL = [
   { type:'dw', label:'DW', css:'dw', count:2 },
   { type:'tw', label:'TW', css:'tw', count:1 },
 ];
+
+// ═══════════════════════════════════════════════════════════
+//  TRIE + BOARD SOLVER
+//  Built once after the dictionary loads; re-used every game.
+//  DFS over adjacent tiles — prunes any path whose prefix
+//  doesn't exist in the Trie, keeping solve time < 50 ms.
+// ═══════════════════════════════════════════════════════════
+let TRIE = null;
+let allPossibleWords = new Map(); // word → highest achievable score on current board
+
+function buildTrie(words) {
+  const root = { ch: {}, word: false };
+  for (const w of words) {
+    if (w.length < 2) continue;
+    let node = root;
+    for (const c of w) {
+      if (!node.ch[c]) node.ch[c] = { ch: {}, word: false };
+      node = node.ch[c];
+    }
+    node.word = true;
+  }
+  return root;
+}
+
+function findAllWords() {
+  if (!TRIE) return new Map();
+  const found = new Map();
+
+  function dfs(pos, path, node) {
+    const c     = boardData[pos].letter.toLowerCase();
+    const child = node.ch[c];
+    if (!child) return;          // no dictionary word starts with this prefix — prune
+
+    path.push(pos);
+
+    if (child.word && path.length >= 2) {
+      const word = path.map(i => boardData[i].letter).join('').toLowerCase();
+      const pts  = calcWordScore([...path]);
+      // Keep the highest-scoring path in case the same word is reachable multiple ways
+      if (!found.has(word) || found.get(word) < pts) found.set(word, pts);
+    }
+
+    for (let next = 0; next < 16; next++) {
+      if (!path.includes(next) && isAdjacent(pos, next)) dfs(next, path, child);
+    }
+
+    path.pop();
+  }
+
+  for (let start = 0; start < 16; start++) dfs(start, [], TRIE);
+  return found;
+}
 
 // ═══════════════════════════════════════════════════════════
 //  SEEDED PRNG  (mulberry32)
@@ -1092,8 +1198,29 @@ function beginGame(seed) {
   updateTimerDisplay();
 
   generateBoard();
+  allPossibleWords = findAllWords();
+
+  if (allPossibleWords.size < 30) {
+    // Board quality gate — ask the player before starting
+    $('qualityCount').textContent = allPossibleWords.size;
+    $('qualityOverlay').classList.remove('hidden');
+    return;   // timer not started yet; handlers below resume or restart
+  }
+
   renderBoard();
   startTimer();
+}
+
+function playAnywayFromQuality() {
+  $('qualityOverlay').classList.add('hidden');
+  renderBoard();
+  startTimer();
+}
+
+function newBoardFromQuality() {
+  $('qualityOverlay').classList.add('hidden');
+  gameActive = false;
+  showSeedOverlay();
 }
 
 function endGame() {
@@ -1104,18 +1231,40 @@ function endGame() {
   saveHighScore(gameScore, currentSeed);
   playSound(isHigh ? 'highscore' : 'game_over');
 
-  const count = foundWords.size;
-  $('finalScore').textContent = gameScore.toLocaleString();
+  const count  = foundWords.size;
+  const maxPts = [...allPossibleWords.values()].reduce((a, b) => a + b, 0);
+  $('finalScore').textContent  = gameScore.toLocaleString();
   $('resultStats').textContent =
-    `Seed ${String(currentSeed).padStart(6, '0')} · ${count} word${count !== 1 ? 's' : ''}`;
+    `Seed ${String(currentSeed).padStart(6, '0')} · ${count} of ${allPossibleWords.size} words · max ${maxPts.toLocaleString()} pts`;
 
-  // Words sorted by score descending
+  // Found words — sorted by score descending
   const sorted = [...foundWords.entries()].sort((a, b) => b[1] - a[1]);
   $('resultWordList').innerHTML = sorted.map(([w, p]) =>
     `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
   ).join('');
 
+  // Missed words — valid words the player never found, sorted by score descending
+  const missed = [...allPossibleWords.entries()]
+    .filter(([w]) => !foundWords.has(w))
+    .sort((a, b) => b[1] - a[1]);
+  $('missedWordList').innerHTML = missed.map(([w, p]) =>
+    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
+  ).join('');
+
+  // Tab labels
+  $('foundCount').textContent  = count;
+  $('missedCount').textContent = missed.length;
+  showResultTab('found');      // always open on Found tab
+
   $('overlay').classList.remove('hidden');
+}
+
+function showResultTab(tab) {
+  const onFound = tab === 'found';
+  $('tabFound').classList.toggle('active',  onFound);
+  $('tabMissed').classList.toggle('active', !onFound);
+  $('resultWordList').classList.toggle('vis-hidden',  !onFound);
+  $('missedWordList').classList.toggle('vis-hidden',   onFound);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1136,7 +1285,10 @@ if ('serviceWorker' in navigator) {
 //  START
 // ═══════════════════════════════════════════════════════════
 loadSounds();
-loadDictionary().finally(() => showSeedOverlay());
+loadDictionary().finally(() => {
+  TRIE = buildTrie(WORDS);   // build once; reused every game
+  showSeedOverlay();
+});
 </script>
 </body>
 </html>
