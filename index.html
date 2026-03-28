@@ -455,47 +455,6 @@
 
     /* ── Utility ─────────────────────────────────────────── */
     .vis-hidden { display: none !important; }
-    /* General-purpose hidden class used on non-overlay elements */
-    .hidden { display: none !important; }
-
-    /* ── Game-over side-by-side layout ───────────────────── */
-    /* #gameLayout is a permanent transparent wrapper — its children
-       (.container and #resultPanel) are treated as direct flex items
-       of body at all times, so the normal game layout is unchanged. */
-    .game-layout { display: contents; }
-
-    /* When the game ends, body switches from a flex column to a flex row
-       so the shrunken board and the result panel appear side by side.
-       position:fixed overlays are out of flow and unaffected. */
-    body.post-game {
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: center;
-      overflow-y: auto;
-      gap: 16px;
-      padding: 16px 12px;
-    }
-    body.post-game .container {
-      --board-size: clamp(160px, 38vmin, 240px);
-    }
-
-    /* ── Inline result panel ─────────────────────────────── */
-    .result-panel {
-      background: var(--panel);
-      border: 1px solid #374151;
-      border-radius: 24px;
-      padding: 20px 18px;
-      width: min(300px, 92vw);
-      max-height: 90vh;
-      overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: #374151 transparent;
-      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .result-panel h2 { font-size: 20px; color: var(--muted); margin-bottom: 3px; text-align: center; }
-    .result-panel .result-final { font-size: 54px; }
-    .result-panel .result-word-list { max-height: 220px; }
 
     /* ── Floating score pop ──────────────────────────────── */
     .score-pop {
@@ -523,7 +482,6 @@
 </head>
 <body>
 
-<div id="gameLayout" class="game-layout">
 <div class="container">
   <div class="header">
     <div class="stat">
@@ -534,7 +492,7 @@
       <div class="timer-value ok" id="timer">2:00</div>
     </div>
     <div class="header-end">
-      <span class="version-label">v1.0</span>
+      <span class="version-label">v0.3</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -552,28 +510,28 @@
     <h4>Found Words</h4>
     <div class="word-grid" id="wordGrid"></div>
   </div>
-</div><!-- end .container -->
-
-<!-- Inline game-over results panel (shown beside board when game ends) -->
-<div id="resultPanel" class="result-panel hidden">
-  <h2>Time's Up!</h2>
-  <div class="result-label">Final Score</div>
-  <div class="result-final" id="finalScore">0</div>
-  <div class="result-stats" id="resultStats"></div>
-  <div class="result-tabs">
-    <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
-    <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
-  </div>
-  <div class="result-word-list" id="resultWordList"></div>
-  <div class="result-word-list vis-hidden" id="missedWordList"></div>
-  <div class="btn-row" style="margin-top:16px">
-    <button class="play-btn" onclick="newGame()">New Game</button>
-    <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
-            onclick="showHighScores()">High Scores</button>
-  </div>
 </div>
 
-</div><!-- end #gameLayout -->
+<!-- Game over overlay -->
+<div class="overlay hidden" id="overlay">
+  <div class="result-card">
+    <h2>Time's Up!</h2>
+    <div class="result-label">Final Score</div>
+    <div class="result-final" id="finalScore">0</div>
+    <div class="result-stats"  id="resultStats"></div>
+    <div class="result-tabs">
+      <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
+      <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
+    </div>
+    <div class="result-word-list" id="resultWordList"></div>
+    <div class="result-word-list vis-hidden" id="missedWordList"></div>
+    <div class="btn-row">
+      <button class="play-btn" onclick="newGame()">New Game</button>
+      <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
+              onclick="showHighScores()">High Scores</button>
+    </div>
+  </div>
+</div>
 
 <!-- Seed overlay -->
 <div class="overlay hidden" id="seedOverlay">
@@ -840,13 +798,13 @@ function showHighScores(newEntry) {
         <tbody>${rows}</tbody>
       </table>`;
   }
-  $('resultPanel').classList.add('hidden');
+  $('overlay').classList.add('hidden');
   $('hsOverlay').classList.remove('hidden');
 }
 
 function closeHighScores() {
   $('hsOverlay').classList.add('hidden');
-  if (!gameActive) $('resultPanel').classList.remove('hidden');
+  if (!gameActive) $('overlay').classList.remove('hidden');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -861,7 +819,7 @@ function rollSeed() {
 
 function showSeedOverlay() {
   rollSeed();
-  $('resultPanel').classList.add('hidden');
+  $('overlay').classList.add('hidden');
   $('hsOverlay').classList.add('hidden');
   $('seedOverlay').classList.remove('hidden');
   $('seedInput').focus();
@@ -1381,8 +1339,7 @@ function newGame() {
   clearInterval(timerHandle);
   gameActive = false;
   // Reset game-over layout immediately so seed overlay appears over a clean screen
-  $('resultPanel').classList.add('hidden');
-  document.body.classList.remove('post-game');
+  $('overlay').classList.add('hidden');
   $('newGameBtn').textContent = 'New Game';
   showSeedOverlay();
 }
@@ -1399,8 +1356,7 @@ function beginGame(seed) {
   $('wordGrid').innerHTML    = '';
   $('wordText').textContent  = '';
   $('wordScore').className   = 'word-score';
-  $('resultPanel').classList.add('hidden');
-  document.body.classList.remove('post-game');
+  $('overlay').classList.add('hidden');
   $('seedOverlay').classList.add('hidden');
   $('newGameBtn').textContent = 'End Game';
   updateTimerDisplay();
@@ -1513,9 +1469,7 @@ function endGame() {
   $('missedCount').textContent = missed.length;
   showResultTab('found');      // always open on Found tab
 
-  // Show inline result panel beside the (now-shrunken) board
-  $('resultPanel').classList.remove('hidden');
-  document.body.classList.add('post-game');
+  $('overlay').classList.remove('hidden');
 }
 
 function showResultTab(tab) {
