@@ -66,43 +66,19 @@ function drawTile(canvas) {
     ctx.closePath();
   }
 
-  // ── Drop shadow ─────────────────────────────────────────
-  ctx.save();
-  ctx.shadowColor   = 'rgba(0,0,0,0.45)';
-  ctx.shadowBlur    = S * 0.06;
-  ctx.shadowOffsetY = S * 0.025;
+  // ── White tile background ────────────────────────────────
   roundRect(x, y, w, h, r);
-  ctx.fillStyle = '#C8A060';
+  ctx.fillStyle = '#ffffff';
   ctx.fill();
-  ctx.restore();
-
-  // ── Tile gradient ────────────────────────────────────────
-  const grad = ctx.createLinearGradient(0, y, 0, y + h);
-  grad.addColorStop(0,   '#E8CFA0');
-  grad.addColorStop(1,   '#B8904A');
-  roundRect(x, y, w, h, r);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // ── Top shine ────────────────────────────────────────────
-  ctx.save();
-  roundRect(x, y, w, h, r);
-  ctx.clip();
-  const shine = ctx.createLinearGradient(0, y, 0, y + h * 0.45);
-  shine.addColorStop(0,   'rgba(255,255,255,0.30)');
-  shine.addColorStop(1,   'rgba(255,255,255,0)');
-  ctx.fillStyle = shine;
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
 
   // ── Border ───────────────────────────────────────────────
   roundRect(x, y, w, h, r);
-  ctx.strokeStyle = '#8A6830';
-  ctx.lineWidth   = S * 0.007;
+  ctx.strokeStyle = '#cccccc';
+  ctx.lineWidth   = S * 0.012;
   ctx.stroke();
 
   // ── Letter W ─────────────────────────────────────────────
-  ctx.fillStyle    = '#2C1608';
+  ctx.fillStyle    = '#000000';
   ctx.font         = `900 ${Math.round(S * 0.615)}px Georgia, serif`;
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'alphabetic';
@@ -112,7 +88,7 @@ function drawTile(canvas) {
   ctx.font         = `700 ${Math.round(S * 0.142)}px Georgia, serif`;
   ctx.textAlign    = 'right';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText('4', S - pad - S * 0.018, S - pad - S * 0.018);
+  ctx.fillText('4', S - pad - S * 0.054, S - pad - S * 0.054);
 }
 
 [
