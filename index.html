@@ -972,6 +972,15 @@ function isAdjacent(a, b) {
   return Math.abs(ar - br) <= 1 && Math.abs(ac - bc) <= 1 && a !== b;
 }
 
+// True only for purely horizontal or vertical neighbours (not diagonal).
+// Used by the diagonal-ease guard in onDragMove.
+function isHVAdjacent(a, b) {
+  const ar = Math.floor(a / 4), ac = a % 4;
+  const br = Math.floor(b / 4), bc = b % 4;
+  return (ar === br && Math.abs(ac - bc) === 1) ||  // same row, next column
+         (ac === bc && Math.abs(ar - br) === 1);    // same column, next row
+}
+
 // ═══════════════════════════════════════════════════════════
 //  WORD + SCORE
 // ═══════════════════════════════════════════════════════════
@@ -1167,6 +1176,35 @@ function onDragMove(x, y) {
 
   if (selPath.includes(idx))      return;
   if (!isAdjacent(last, idx))     return;
+
+  // 20% depth guard ─────────────────────────────────────────
+  // The touch/cursor must be at least 20% inside the candidate tile on
+  // every side before the move registers.  Prevents accidental edge-clip
+  // registrations when the finger is skimming tile borders.
+  // (Applies to all neighbours — diagonal and straight alike.)
+  {
+    const tileEl = $('board').querySelectorAll('.tile')[idx];
+    if (tileEl) {
+      const r  = tileEl.getBoundingClientRect();
+      const rx = (x - r.left) / r.width;
+      const ry = (y - r.top)  / r.height;
+      if (rx < 0.20 || rx > 0.80 || ry < 0.20 || ry > 0.80) return;
+    }
+  }
+
+  // Diagonal-ease guard ─────────────────────────────────────
+  // When entering a straight (H or V) neighbour, reject the move if the
+  // touch/cursor is inside the top or bottom 8% of that tile's height.
+  // The finger is near a corner and almost certainly heading for a diagonal
+  // tile — accepting the H/V tile here would break the intended diagonal path.
+  if (isHVAdjacent(last, idx)) {
+    const tileEl = document.elementFromPoint(x, y)?.closest('.tile');
+    if (tileEl) {
+      const r    = tileEl.getBoundingClientRect();
+      const relY = (y - r.top) / r.height;
+      if (relY < 0.08 || relY > 0.92) return;
+    }
+  }
 
   selPath.push(idx);
   playTick();                  // selPath.length reflects the newly added tile
