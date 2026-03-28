@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="tileGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#E8CFA0"/>
+      <stop offset="100%" stop-color="#B8904A"/>
+    </linearGradient>
+    <linearGradient id="shineGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="tileClip">
+      <rect x="10" y="10" width="160" height="160" rx="25" ry="25"/>
+    </clipPath>
+  </defs>
+  <rect x="10" y="10" width="160" height="160" rx="25" ry="25" fill="url(#tileGrad)"/>
+  <rect x="10" y="10" width="160" height="84"  rx="25" ry="25"
+        fill="url(#shineGrad)" clip-path="url(#tileClip)"/>
+  <rect x="10" y="10" width="160" height="160" rx="25" ry="25"
+        fill="none" stroke="#8A6830" stroke-width="2"/>
+  <text x="90" y="133"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="112" font-weight="900"
+        text-anchor="middle"
+        fill="#2C1608">W</text>
+  <text x="158" y="166"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="27" font-weight="700"
+        text-anchor="end"
+        fill="#2C1608">4</text>
+</svg>

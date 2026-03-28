@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Word Swipe</title>
+
+  <!-- PWA / iOS -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Word Swipe">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --panel:    #161b22;
+      --tile-sel: #e94560;
+      --accent:   #e94560;
+      --green:    #4ecca3;
+      --text:     #e2e8f0;
+      --muted:    #6b7280;
+      --radius:   14px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; }
+    .stat-value { font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1; }
+
+    .timer-wrap {
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 6px 16px;
+      text-align: center;
+    }
+    .timer-value { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .timer-value.ok   { color: var(--green); }
+    .timer-value.warn { color: #f59e0b; }
+    .timer-value.crit { color: var(--accent); animation: blink 0.6s infinite alternate; }
+    @keyframes blink { from { opacity: 1 } to { opacity: 0.3 } }
+
+    .new-btn {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .new-btn:hover { background: #21293a; }
+
+    /* ── Word display ────────────────────────────────────── */
+    .word-display {
+      background: var(--panel);
+      border-radius: var(--radius);
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .word-text {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      transition: color 0.15s;
+    }
+    .word-text.neutral { color: var(--text); }
+    .word-text.invalid { color: var(--accent); }
+    .word-text.valid   { color: var(--green); }
+    .word-text.dup     { color: #f59e0b; }
+
+    .word-score {
+      position: absolute;
+      right: 14px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .word-score.show { opacity: 1; }
+
+    /* ── Board ───────────────────────────────────────────── */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      background: var(--panel);
+      padding: 14px;
+      border-radius: 20px;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+    }
+
+    .tile {
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: background 0.1s, transform 0.1s, opacity 0.2s;
+      border: 2px solid transparent;
+      cursor: pointer;
+      overflow: visible;
+    }
+
+    .tile.selected {
+      background: var(--tile-sel);
+      border-color: #ff8fa3;
+      transform: scale(1.06);
+      z-index: 2;
+    }
+
+    .tile.valid-word {
+      background: var(--green);
+      border-color: #6ee7c0;
+    }
+
+    .tile.used { opacity: 0.45; }
+
+    .tile-letter {
+      font-size: clamp(40px, 10.9vw, 55px);
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1;
+      color: #000000;
+    }
+
+    .tile-pts {
+      position: absolute;
+      bottom: 3px;
+      right: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #000000;
+      line-height: 1;
+    }
+
+    .tile-mult {
+      position: absolute;
+      top: -9px;
+      left: -9px;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 3px 5px;
+      border-radius: 4px;
+      line-height: 1.3;
+      z-index: 3;
+    }
+    .dl { background: #22c55e; color: #fff; }
+    .tl { background: #3b82f6; color: #fff; }
+    .dw { background: #eab308; color: #1a1a1a; }
+    .tw { background: #dc2626; color: #fff; }
+
+    /* Selection path canvas */
+    #path-canvas {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: 20px;
+    }
+
+    /* ── Found words ─────────────────────────────────────── */
+    .words-panel {
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      max-height: 130px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #374151 transparent;
+    }
+    .words-panel h4 { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; }
+
+    .word-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    .found-word {
+      background: #1f2937;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      display: flex;
+      gap: 5px;
+    }
+    .found-word .fw-pts { color: var(--green); }
+
+    /* ── Overlays (shared) ───────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      backdrop-filter: blur(4px);
+    }
+    .overlay.hidden { display: none; }
+
+    /* ── Game Over card ──────────────────────────────────── */
+    .result-card {
+      background: var(--panel);
+      border: 1px solid #374151;
+      border-radius: 24px;
+      padding: 36px 32px;
+      text-align: center;
+      width: min(340px, 90vw);
+      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes pop-in {
+      from { transform: scale(0.7); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .result-card h2    { font-size: 22px; color: var(--muted); margin-bottom: 4px; }
+    .result-final      { font-size: 72px; font-weight: 900; color: var(--accent); line-height: 1; }
+    .result-label      { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .result-stats      { font-size: 15px; color: var(--muted); margin-bottom: 24px; }
+
+    .result-word-list {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      text-align: left;
+      scrollbar-width: thin;
+      scrollbar-color: #374151 transparent;
+    }
+    .result-word-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 10px;
+      border-bottom: 1px solid #1f2937;
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+    .result-word-row:last-child { border-bottom: none; }
+    .result-word-row .rw-pts { color: var(--green); font-weight: 700; }
+
+    .play-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 40px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .play-btn:hover  { opacity: 0.9; }
+    .play-btn:active { transform: scale(0.97); }
+
+    /* ── Seed overlay ────────────────────────────────────── */
+    .seed-card {
+      background: var(--panel);
+      border: 1px solid #374151;
+      border-radius: 24px;
+      padding: 36px 32px;
+      text-align: center;
+      width: min(340px, 92vw);
+      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .seed-card h2 { font-size: 22px; margin-bottom: 6px; }
+    .seed-card p  { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+    .seed-input-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .seed-input {
+      width: 220px;
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      padding: 10px 20px;
+      letter-spacing: 6px;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .seed-input:focus   { border-color: var(--accent); }
+    .seed-input.invalid { border-color: var(--accent); color: var(--accent); }
+
+    .seed-dice-btn {
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 22px;
+      width: 48px;
+      height: 56px;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .seed-dice-btn:hover { background: #374151; }
+
+    .seed-btn-row { display: flex; gap: 12px; justify-content: center; }
+
+    /* ── High Scores overlay ─────────────────────────────── */
+    .hs-card {
+      background: var(--panel);
+      border: 1px solid #374151;
+      border-radius: 24px;
+      padding: 28px 24px;
+      text-align: center;
+      width: min(360px, 92vw);
+      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .hs-card h2 { font-size: 22px; margin-bottom: 16px; }
+    .hs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .hs-table th {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 0 8px 8px;
+      border-bottom: 1px solid #374151;
+    }
+    .hs-table th:first-child { text-align: left; }
+    .hs-table th:last-child  { text-align: right; }
+    .hs-table td { padding: 7px 8px; border-bottom: 1px solid #1f2937; }
+    .hs-table td:first-child { text-align: left; font-weight: 700; color: var(--green); }
+    .hs-table td:nth-child(2){ text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+    .hs-table td:last-child  { text-align: right; font-weight: 700; }
+    .hs-table tr.hs-new td   { color: var(--accent); }
+    .hs-empty { color: var(--muted); font-size: 14px; padding: 20px 0; }
+    .btn-row  { display: flex; gap: 12px; justify-content: center; }
+
+    /* ── Floating score pop ──────────────────────────────── */
+    .score-pop {
+      position: fixed;
+      pointer-events: none;
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--green);
+      z-index: 300;
+      animation: float-up 0.9s ease-out forwards;
+    }
+    @keyframes float-up {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+    }
+
+    @keyframes shake {
+      0%,100%{ transform: translateX(0); }
+      20%    { transform: translateX(-6px); }
+      40%    { transform: translateX(6px); }
+      60%    { transform: translateX(-4px); }
+      80%    { transform: translateX(4px); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="stat">
+      <span class="stat-label">Score</span>
+      <span class="stat-value" id="score">0</span>
+    </div>
+    <div class="timer-wrap">
+      <div class="timer-value ok" id="timer">2:00</div>
+    </div>
+    <button class="new-btn" onclick="newGame()">New Game</button>
+  </div>
+
+  <div class="word-display">
+    <span class="word-text neutral" id="wordText"></span>
+    <span class="word-score" id="wordScore"></span>
+  </div>
+
+  <div class="board" id="board">
+    <canvas id="path-canvas"></canvas>
+  </div>
+
+  <div class="words-panel" id="wordsPanel">
+    <h4>Found Words</h4>
+    <div class="word-grid" id="wordGrid"></div>
+  </div>
+</div>
+
+<!-- Seed overlay -->
+<div class="overlay hidden" id="seedOverlay">
+  <div class="seed-card">
+    <h2>New Game</h2>
+    <p>Enter a 6-digit seed or roll a random one</p>
+    <div class="seed-input-wrap">
+      <input class="seed-input" id="seedInput" type="text"
+             inputmode="numeric" maxlength="6" placeholder="000000">
+      <button class="seed-dice-btn" onclick="rollSeed()" title="Random seed">&#9861;</button>
+    </div>
+    <div class="seed-btn-row">
+      <button class="play-btn" onclick="startFromSeed()">Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game over overlay -->
+<div class="overlay hidden" id="overlay">
+  <div class="result-card">
+    <h2>Time's Up!</h2>
+    <div class="result-label">Final Score</div>
+    <div class="result-final" id="finalScore">0</div>
+    <div class="result-stats"  id="resultStats"></div>
+    <div class="result-word-list" id="resultWordList"></div>
+    <div class="btn-row">
+      <button class="play-btn" onclick="newGame()">New Game</button>
+      <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
+              onclick="showHighScores()">High Scores</button>
+    </div>
+  </div>
+</div>
+
+<!-- High scores overlay -->
+<div class="overlay hidden" id="hsOverlay">
+  <div class="hs-card">
+    <h2>&#127942; High Scores</h2>
+    <div id="hsContent"></div>
+    <div class="btn-row">
+      <button class="play-btn" onclick="closeHighScores()">Back</button>
+      <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
+              onclick="newGame()">New Game</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  SOUND SYSTEM
+//  Drop .wav files into the sounds/ folder — missing files
+//  are silently skipped so the game always works without them.
+// ═══════════════════════════════════════════════════════════
+const SOUND_FILES = {
+  tick:       'sounds/tick.wav',       // each tile added while dragging
+  word_found: 'sounds/word_found.wav', // valid word submitted
+  invalid:    'sounds/invalid.wav',    // invalid word rejected
+  duplicate:  'sounds/duplicate.wav',  // word already found
+  warning:    'sounds/warning.wav',    // 30 seconds remaining
+  game_over:  'sounds/game_over.wav',  // time's up
+  highscore:  'sounds/highscore.wav',  // new high score achieved
+};
+
+const SOUNDS = {};
+
+function loadSounds() {
+  for (const [name, path] of Object.entries(SOUND_FILES)) {
+    const audio = new Audio();
+    audio.addEventListener('error', () => { delete SOUNDS[name]; }, { once: true });
+    audio.src     = path;
+    audio.preload = 'auto';
+    SOUNDS[name]  = audio;
+  }
+}
+
+function playSound(name) {
+  const a = SOUNDS[name];
+  if (!a) return;
+  try { a.currentTime = 0; a.play().catch(() => {}); } catch (_) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DICTIONARY
+//  words.txt is fetched from the server (one word per line).
+//  The built-in list below is a fallback for offline / direct
+//  file:// access; served via Vercel the full list always loads.
+// ═══════════════════════════════════════════════════════════
+const DICT_FILE = 'words.txt';
+
+const BUILTIN_RAW = `aa ab ad ae ag ah ai al am an ar as at aw ax ay ba be bi bo by da de do ed ef eh el em en er es et ex fa fe gi go ha he hi hm ho id if in is it jo ka ki la li lo ma me mi mm mo mu my na ne no nu od oe of oh oi om on op or os ow ox oy pa pe pi qi re sh si so ta ti to uh um un up us ut we wo xi xu ya ye yo za ace act add age ago aid aim air ale all ant any ape apt arc are ark arm art ash ask ate awe axe aye bad bag ban bar bat bay bed bet big bit bow box boy bud bug bun bus but buy bye can cap car cat cop cow cry cup cut dad day den dew did die dig dim dip dog dot dry dub dug dye ear eat eel egg ego elk elm end era eve ewe eye fad fan far fat fax fed few fib fig fin fit fly fog for fox fry fun fur gag gap gas gel gem get gig gin god got gum gun gut guy gym had ham has hat hay hem hen her hew hex hid him hip his hit hog hop hot how hub hug hum hut ice ill inn ion ire ivy jab jag jam jar jaw jet jig job jot joy jug jut key kid kin kit lab lag lap law lay leg let lid lip lit log lot low lug mad man map mat may men met mob mom mop mud mug nag nap net nip nob nod nor not now nun oak odd ode off oil old one opt ore our out own pad pan par pat pay pea peg pen pet pie pig pin pit pod pop pot pro pub pun pup put rag ram ran rap rat raw ray red ref rep rib rid rig rim rip rob rod rot row rub rug rum run rut rye sad sag sap sat saw say sea set sew shy sin sip sir sit six ski sky sob sod son spa spy sub sue sum sun tab tan tap tar tax tea ten tie tin tip toe ton top toy tub tug two use van vat vet via vie vow wag war wax web wed wet who wig win wit woe won zoo able acid aged also alto area army arts aria back bald ball band bang bare bark barn base bash bask bath beam bean bear beat been beer bell belt bend bile bind bird bite blow blue boat bold bolt bomb bone book boom born boss bowl brag bran brew buck bulb bulk bull bump burn buzz cage cake calf call calm came camp cane card care cast cave cell cent chef chew chin chip chop city clad clam clap clip clod clog clot clue coal coat code coil coin cold colt come cord core cork corn cost crab crew crib crop crow cube cuff cult cure curl cute damp dare dark dart data date dawn dead deaf deal dean dear debt deck deep deer deny desk dice diet dirt disc dish disk dock dome done door dove down drag draw drip drop drum dual duel dunk dusk dust duty each earl earn ease east edge emit epic even ever exam exit face fact fade fail fair fake fall fame farm fate feed feel fell felt fern file fill film find firm fish fist flag flat flaw fled flew flex flip flit flog flow foam fold folk fond food fool foot ford fork form fort foul four fowl fray free frog fuel full fume fund fuse fuzz gale gall game gave gaze gear gill give glad glee glow glue goal goat goes gold golf gone good gore gown grab grad grit grow grub gulf gull gulp gust guts hack hail hair half hall halt hand hang hard harm harp hash haul have hawk head heat heel heir helm help herb herd here hill hive hoax hold hole holy home hood hook hope horn hose host hull hunt hurl hymn idea idle inch info iris iron itch item jade jail jest join joke jolt jump junk jury just keen keep keel kern kill kind king kink kiss knob knot know lace lack lake lamb lamp land lane lash last late lava lawn lazy lead leaf leak lean leap lend lens less levy lick life lift like lime link lint lion list live load loam loan lobe loft lone look loom loop lose loss love luck lung lure mace made mail main make male mall malt mane many mare mark mast mate math maze meal mean meat melt memo mere mesh mile mild milk mill mind mine mint miss mist mock mode mold mole monk moon more moss most moth move mule must nail name nape navy near neat need nest news next nick none noon norm nose note noun nude null numb oath obey odor okay omen once only open oral over pace pack page pail pair pale palm pane park part pass past path pave peak peel perk pick pier pile pill pine pipe pity plan play plea plot plow plum plus poem pole poll pond pool poor pore port pose post pour prey prod prop pull pump pure push quiz race rack raid rail rain rank rare rash rate rave read real reap rear rely rend rent rest rice rich ride ring riot rise risk road roam roar robe rock role roll roof rook room root rope rose rude ruin rule rush rust safe sage sail sake sale sand sane save scan scar seal seat seed seek seem seep sell send shed shin ship shoe shop shot show silk sing sink sire size skim skin skip slab slam slap sled slim slip slow slug slum smug snap snag snow soak sock sofa soil sole song soon sort soul span spar spot spur stab stag star stay stem step stew stir stop stub suit sung sunk surf swan swap sway tail take tale talk tall tame task team tear tell term test than that them then they thin this thus tide tilt toad toil toll tomb tone tool tore torn tour tram trap trim trio trip trot true tube tuck tusk twig type undo unit upon urge vain vale vane vase vast veil vein very vest vial vine volt vote wade wage wake walk wall wane ward warm warp wash wave weak wean wear weed week weep well welt went were west whim whip wide wild will wilt wind wine wing wire wise wish wolf womb word wore worm worn wrap yell yoke your zeal zest zinc zone zoom`;
+
+let WORDS = new Set(BUILTIN_RAW.trim().split(/\s+/).filter(w => w.length >= 2));
+
+async function loadDictionary() {
+  try {
+    const res = await fetch(DICT_FILE);
+    if (!res.ok) return;
+    const text  = await res.text();
+    const words = text
+      .split(/\r?\n/)
+      .map(l => l.trim().toLowerCase())
+      .filter(l => l.length >= 2 && !l.startsWith('#'));
+    if (words.length > 100) {
+      WORDS = new Set([...WORDS, ...words]);
+      console.log(`Dictionary: ${WORDS.size.toLocaleString()} words loaded from ${DICT_FILE}`);
+    }
+  } catch (_) {
+    // fetch blocked on file:// or file missing — built-in list used
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LETTER CONFIG
+// ═══════════════════════════════════════════════════════════
+const LETTER_CONFIG = {
+  A:{w:9,s:1}, B:{w:2,s:3}, C:{w:2,s:3}, D:{w:4,s:2}, E:{w:12,s:1},
+  F:{w:2,s:4}, G:{w:3,s:2}, H:{w:2,s:4}, I:{w:9,s:1}, J:{w:1,s:8},
+  K:{w:1,s:5}, L:{w:4,s:1}, M:{w:2,s:3}, N:{w:6,s:1}, O:{w:8,s:1},
+  P:{w:2,s:3}, Q:{w:1,s:10},R:{w:6,s:1}, S:{w:4,s:1}, T:{w:6,s:1},
+  U:{w:4,s:1}, V:{w:2,s:4}, W:{w:2,s:4}, X:{w:1,s:8}, Y:{w:2,s:4},
+  Z:{w:1,s:10}
+};
+
+const MULT_POOL = [
+  { type:'dl', label:'DL', css:'dl', count:1 },
+  { type:'tl', label:'TL', css:'tl', count:2 },
+  { type:'dw', label:'DW', css:'dw', count:2 },
+  { type:'tw', label:'TW', css:'tw', count:1 },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  SEEDED PRNG  (mulberry32)
+// ═══════════════════════════════════════════════════════════
+function makePRNG(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+let rng = Math.random;
+let currentSeed = 0;
+
+// ═══════════════════════════════════════════════════════════
+//  HIGH SCORES  (localStorage)
+// ═══════════════════════════════════════════════════════════
+const HS_KEY = 'wordswipe_highscores';
+const HS_MAX = 20;
+
+function loadHighScores() {
+  try { return JSON.parse(localStorage.getItem(HS_KEY)) || []; }
+  catch { return []; }
+}
+
+function isNewHighScore(score) {
+  const hs = loadHighScores();
+  return hs.length < HS_MAX || score > (hs[hs.length - 1]?.score ?? 0);
+}
+
+function saveHighScore(score, seed) {
+  const hs = loadHighScores();
+  hs.push({ score, seed: String(seed).padStart(6, '0') });
+  hs.sort((a, b) => b.score - a.score);
+  hs.splice(HS_MAX);
+  localStorage.setItem(HS_KEY, JSON.stringify(hs));
+  return hs;
+}
+
+function showHighScores(newEntry) {
+  const hs      = loadHighScores();
+  const content = $('hsContent');
+  if (hs.length === 0) {
+    content.innerHTML = '<div class="hs-empty">No scores yet — play a game!</div>';
+  } else {
+    const rows = hs.map((entry, i) => {
+      const isNew = newEntry &&
+        entry.score === newEntry.score &&
+        entry.seed  === String(newEntry.seed).padStart(6, '0');
+      return `<tr class="${isNew ? 'hs-new' : ''}">
+        <td>${i + 1}.</td>
+        <td>${entry.seed}</td>
+        <td>${entry.score.toLocaleString()}</td>
+      </tr>`;
+    }).join('');
+    content.innerHTML = `
+      <table class="hs-table">
+        <thead><tr><th>#</th><th>Seed</th><th>Score</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+  $('overlay').classList.add('hidden');
+  $('hsOverlay').classList.remove('hidden');
+}
+
+function closeHighScores() {
+  $('hsOverlay').classList.add('hidden');
+  if (!gameActive) $('overlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SEED UI
+// ═══════════════════════════════════════════════════════════
+function randomSeed() { return Math.floor(Math.random() * 1_000_000); }
+
+function rollSeed() {
+  $('seedInput').value = String(randomSeed()).padStart(6, '0');
+  $('seedInput').classList.remove('invalid');
+}
+
+function showSeedOverlay() {
+  rollSeed();
+  $('overlay').classList.add('hidden');
+  $('hsOverlay').classList.add('hidden');
+  $('seedOverlay').classList.remove('hidden');
+  $('seedInput').focus();
+  $('seedInput').select();
+}
+
+function startFromSeed() {
+  const raw = $('seedInput').value.trim();
+  const n   = parseInt(raw, 10);
+  if (isNaN(n) || n < 0 || n > 999999 || !/^\d{1,6}$/.test(raw)) {
+    $('seedInput').classList.add('invalid');
+    return;
+  }
+  $('seedOverlay').classList.add('hidden');
+  beginGame(n);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $('seedInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startFromSeed();
+    $('seedInput').classList.remove('invalid');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════
+let boardData   = [];
+let selPath     = [];
+let isDragging  = false;
+let gameScore   = 0;
+let foundWords  = new Map();
+let timeLeft    = 120;
+let timerHandle = null;
+let gameActive  = false;
+
+const $ = id => document.getElementById(id);
+
+// ═══════════════════════════════════════════════════════════
+//  BOARD GENERATION
+// ═══════════════════════════════════════════════════════════
+function weightedLetter() {
+  const entries = Object.entries(LETTER_CONFIG);
+  const total   = entries.reduce((s, [, v]) => s + v.w, 0);
+  let r = rng() * total;
+  for (const [l, v] of entries) {
+    r -= v.w;
+    if (r <= 0) return l;
+  }
+  return 'E';
+}
+
+function generateBoard() {
+  const mults     = new Array(16).fill(null);
+  const positions = Array.from({ length: 16 }, (_, i) => i);
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  let pos = 0;
+  for (const { type, label, css, count } of MULT_POOL) {
+    for (let i = 0; i < count; i++) {
+      mults[positions[pos++]] = { type, label, css };
+    }
+  }
+  boardData = Array.from({ length: 16 }, (_, i) => {
+    const l = weightedLetter();
+    return { letter: l, score: LETTER_CONFIG[l].s, mult: mults[i] };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER BOARD
+// ═══════════════════════════════════════════════════════════
+function renderBoard() {
+  const board = $('board');
+  Array.from(board.querySelectorAll('.tile')).forEach(t => t.remove());
+
+  boardData.forEach((cell, i) => {
+    const tile   = document.createElement('div');
+    tile.className    = 'tile';
+    tile.dataset.index = i;
+
+    const letter = document.createElement('div');
+    letter.className = 'tile-letter';
+    letter.textContent = cell.letter;
+
+    const pts = document.createElement('div');
+    pts.className  = 'tile-pts';
+    pts.textContent = cell.score;
+
+    tile.appendChild(letter);
+    tile.appendChild(pts);
+
+    if (cell.mult) {
+      const m = document.createElement('div');
+      m.className   = `tile-mult ${cell.mult.css}`;
+      m.textContent = cell.mult.label;
+      tile.appendChild(m);
+    }
+
+    board.appendChild(tile);
+  });
+
+  resizeCanvas();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PATH CANVAS
+// ═══════════════════════════════════════════════════════════
+function resizeCanvas() {
+  const board  = $('board');
+  const canvas = $('path-canvas');
+  canvas.width  = board.offsetWidth;
+  canvas.height = board.offsetHeight;
+}
+
+function getTileCenter(index) {
+  const board = $('board');
+  const tiles = board.querySelectorAll('.tile');
+  const tile  = tiles[index];
+  if (!tile) return null;
+  const br = board.getBoundingClientRect();
+  const tr = tile.getBoundingClientRect();
+  return {
+    x: tr.left - br.left + tr.width  / 2,
+    y: tr.top  - br.top  + tr.height / 2,
+  };
+}
+
+function drawPath(isValid) {
+  const canvas = $('path-canvas');
+  const ctx    = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (selPath.length < 2) return;
+
+  ctx.beginPath();
+  const first = getTileCenter(selPath[0]);
+  ctx.moveTo(first.x, first.y);
+  for (let i = 1; i < selPath.length; i++) {
+    const pt = getTileCenter(selPath[i]);
+    ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.strokeStyle = isValid ? 'rgba(78,204,163,0.7)' : 'rgba(233,69,96,0.7)';
+  ctx.lineWidth   = 4;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ADJACENCY
+// ═══════════════════════════════════════════════════════════
+function isAdjacent(a, b) {
+  const ar = Math.floor(a / 4), ac = a % 4;
+  const br = Math.floor(b / 4), bc = b % 4;
+  return Math.abs(ar - br) <= 1 && Math.abs(ac - bc) <= 1 && a !== b;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WORD + SCORE
+// ═══════════════════════════════════════════════════════════
+function currentWord() {
+  return selPath.map(i => boardData[i].letter).join('').toLowerCase();
+}
+
+function calcWordScore(path) {
+  let letterSum = 0, wordMult = 1;
+  for (const i of path) {
+    const cell = boardData[i];
+    let ls = cell.score;
+    if (cell.mult) {
+      if (cell.mult.type === 'dl') ls *= 2;
+      if (cell.mult.type === 'tl') ls *= 3;
+      if (cell.mult.type === 'dw') wordMult *= 2;
+      if (cell.mult.type === 'tw') wordMult *= 3;
+    }
+    letterSum += ls;
+  }
+  let total = letterSum * wordMult;
+  if      (path.length >= 8) total += 25;
+  else if (path.length >= 7) total += 15;
+  else if (path.length >= 6) total += 8;
+  else if (path.length >= 5) total += 3;
+  return total;
+}
+
+function updateWordDisplay() {
+  const word = currentWord();
+  const el   = $('wordText');
+  const sc   = $('wordScore');
+
+  if (!word) {
+    el.className  = 'word-text neutral';
+    el.textContent = '';
+    sc.className  = 'word-score';
+    sc.textContent = '';
+    return;
+  }
+
+  if (foundWords.has(word)) {
+    el.className  = 'word-text dup';
+    el.textContent = word;
+    sc.className  = 'word-score';
+    return;
+  }
+
+  if (word.length >= 2 && WORDS.has(word)) {
+    el.className  = 'word-text valid';
+    const pts     = calcWordScore(selPath);
+    sc.textContent = `+${pts}`;
+    sc.className  = 'word-score show';
+  } else {
+    el.className  = 'word-text invalid';
+    sc.className  = 'word-score';
+    sc.textContent = '';
+  }
+  el.textContent = word;
+}
+
+function updateTileStyles() {
+  const tiles   = $('board').querySelectorAll('.tile');
+  const word    = currentWord();
+  const isValid = word.length >= 2 && WORDS.has(word) && !foundWords.has(word);
+
+  tiles.forEach((t, i) => {
+    t.classList.remove('selected', 'valid-word');
+    if (selPath.includes(i)) t.classList.add(isValid ? 'valid-word' : 'selected');
+  });
+  drawPath(isValid);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SUBMIT WORD
+// ═══════════════════════════════════════════════════════════
+function submitWord() {
+  const word = currentWord();
+  if (!word || word.length < 2) return clearSelection();
+
+  if (!WORDS.has(word)) {
+    playSound('invalid');
+    shakeWordDisplay();
+    return clearSelection();
+  }
+  if (foundWords.has(word)) {
+    playSound('duplicate');
+    flashWordDisplay('dup');
+    return clearSelection();
+  }
+
+  const pts = calcWordScore(selPath);
+  gameScore += pts;
+  foundWords.set(word, pts);
+  playSound('word_found');
+
+  $('score').textContent = gameScore;
+  addWordToList(word, pts);
+  showScorePop(pts, selPath[selPath.length - 1]);
+  flashWordDisplay('valid');
+  clearSelection();
+}
+
+function flashWordDisplay(cls) {
+  const el = $('wordText');
+  el.className = `word-text ${cls}`;
+  setTimeout(() => { el.className = 'word-text neutral'; el.textContent = ''; }, 600);
+  $('wordScore').className = 'word-score';
+}
+
+function shakeWordDisplay() {
+  const el = $('wordText');
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'shake 0.3s ease';
+  setTimeout(() => { el.style.animation = ''; }, 350);
+}
+
+function clearSelection() {
+  selPath    = [];
+  isDragging = false;
+  const tiles = $('board').querySelectorAll('.tile');
+  tiles.forEach(t => t.classList.remove('selected', 'valid-word'));
+  const canvas = $('path-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  $('wordText').textContent  = '';
+  $('wordText').className    = 'word-text neutral';
+  $('wordScore').className   = 'word-score';
+}
+
+function addWordToList(word, pts) {
+  const grid = $('wordGrid');
+  const div  = document.createElement('div');
+  div.className = 'found-word';
+  div.innerHTML = `<span>${word.toUpperCase()}</span><span class="fw-pts">${pts}</span>`;
+  grid.prepend(div);
+  $('wordsPanel').scrollTop = 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FLOATING SCORE POP
+// ═══════════════════════════════════════════════════════════
+function showScorePop(pts, tileIndex) {
+  const center = getTileCenter(tileIndex);
+  if (!center) return;
+  const board = $('board').getBoundingClientRect();
+  const pop   = document.createElement('div');
+  pop.className   = 'score-pop';
+  pop.textContent = `+${pts}`;
+  pop.style.left  = (board.left + center.x - 20) + 'px';
+  pop.style.top   = (board.top  + center.y - 10) + 'px';
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 950);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DRAG INTERACTION  (mouse + touch unified)
+// ═══════════════════════════════════════════════════════════
+function tileFromPoint(x, y) {
+  const el   = document.elementFromPoint(x, y);
+  if (!el) return null;
+  const tile = el.closest('.tile');
+  if (!tile) return null;
+  return parseInt(tile.dataset.index);
+}
+
+function onDragStart(x, y) {
+  if (!gameActive) return;
+  const idx = tileFromPoint(x, y);
+  if (idx === null || idx === undefined) return;
+  isDragging = true;
+  selPath    = [idx];
+  playSound('tick');
+  updateWordDisplay();
+  updateTileStyles();
+}
+
+function onDragMove(x, y) {
+  if (!isDragging || !gameActive) return;
+  const idx  = tileFromPoint(x, y);
+  if (idx === null || idx === undefined) return;
+
+  const last = selPath[selPath.length - 1];
+  if (idx === last) return;
+
+  // Backtrack
+  if (selPath.length >= 2 && idx === selPath[selPath.length - 2]) {
+    selPath.pop();
+    updateWordDisplay();
+    updateTileStyles();
+    return;
+  }
+
+  if (selPath.includes(idx))      return;
+  if (!isAdjacent(last, idx))     return;
+
+  selPath.push(idx);
+  playSound('tick');
+  updateWordDisplay();
+  updateTileStyles();
+}
+
+function onDragEnd() {
+  if (!isDragging) return;
+  submitWord();
+}
+
+// Mouse
+$('board').addEventListener('mousedown', e => { e.preventDefault(); onDragStart(e.clientX, e.clientY); });
+document.addEventListener('mousemove',  e => onDragMove(e.clientX, e.clientY));
+document.addEventListener('mouseup',    e => { if (isDragging) onDragEnd(); });
+
+// Touch
+$('board').addEventListener('touchstart', e => {
+  e.preventDefault();
+  onDragStart(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+$('board').addEventListener('touchmove', e => {
+  e.preventDefault();
+  onDragMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+$('board').addEventListener('touchend', e => { e.preventDefault(); onDragEnd(); }, { passive: false });
+
+// ═══════════════════════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════════════════════
+function startTimer() {
+  let warnPlayed = false;
+  clearInterval(timerHandle);
+  timerHandle = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft === 30 && !warnPlayed) { playSound('warning'); warnPlayed = true; }
+    if (timeLeft <= 0)                  { clearInterval(timerHandle); endGame(); }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m  = Math.floor(timeLeft / 60);
+  const s  = timeLeft % 60;
+  const el = $('timer');
+  el.textContent = `${m}:${String(s).padStart(2, '0')}`;
+  if      (timeLeft <= 10) el.className = 'timer-value crit';
+  else if (timeLeft <= 30) el.className = 'timer-value warn';
+  else                     el.className = 'timer-value ok';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GAME FLOW
+// ═══════════════════════════════════════════════════════════
+function newGame() {
+  clearInterval(timerHandle);
+  gameActive = false;
+  showSeedOverlay();
+}
+
+function beginGame(seed) {
+  currentSeed = seed;
+  rng         = makePRNG(seed);
+  selPath     = [];
+  gameScore   = 0;
+  foundWords  = new Map();
+  timeLeft    = 120;
+  gameActive  = true;
+
+  $('score').textContent     = '0';
+  $('wordGrid').innerHTML    = '';
+  $('wordText').textContent  = '';
+  $('wordScore').className   = 'word-score';
+  $('overlay').classList.add('hidden');
+  $('seedOverlay').classList.add('hidden');
+  updateTimerDisplay();
+
+  generateBoard();
+  renderBoard();
+  startTimer();
+}
+
+function endGame() {
+  gameActive = false;
+  clearSelection();
+
+  const isHigh = isNewHighScore(gameScore);
+  saveHighScore(gameScore, currentSeed);
+  playSound(isHigh ? 'highscore' : 'game_over');
+
+  const count = foundWords.size;
+  $('finalScore').textContent = gameScore.toLocaleString();
+  $('resultStats').textContent =
+    `Seed ${String(currentSeed).padStart(6, '0')} · ${count} word${count !== 1 ? 's' : ''}`;
+
+  // Words sorted by score descending
+  const sorted = [...foundWords.entries()].sort((a, b) => b[1] - a[1]);
+  $('resultWordList').innerHTML = sorted.map(([w, p]) =>
+    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
+  ).join('');
+
+  $('overlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('resize', resizeCanvas);
+
+// ═══════════════════════════════════════════════════════════
+//  SERVICE WORKER REGISTRATION
+// ═══════════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════════════════════
+loadSounds();
+loadDictionary().finally(() => showSeedOverlay());
+</script>
+</body>
+</html>
