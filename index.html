@@ -550,7 +550,10 @@
 //  are silently skipped so the game always works without them.
 // ═══════════════════════════════════════════════════════════
 const SOUND_FILES = {
-  tick:       'sounds/tick.wav',       // each tile added while dragging
+  game_start: 'sounds/game_start.wav', // board revealed, timer starts
+  tick1:      'sounds/tick1.wav',      // 1st & 2nd letter in a drag
+  tick2:      'sounds/tick2.wav',      // 3rd & 4th letter in a drag
+  tick3:      'sounds/tick3.wav',      // 5th letter and beyond
   word_found: 'sounds/word_found.wav', // valid word submitted
   invalid:    'sounds/invalid.wav',    // invalid word rejected
   duplicate:  'sounds/duplicate.wav',  // word already found
@@ -575,6 +578,14 @@ function playSound(name) {
   const a = SOUNDS[name];
   if (!a) return;
   try { a.currentTime = 0; a.play().catch(() => {}); } catch (_) {}
+}
+
+// Tiered tick — pitch escalates as the word gets longer
+function playTick() {
+  const len = selPath.length;
+  if      (len <= 2) playSound('tick1');
+  else if (len <= 4) playSound('tick2');
+  else               playSound('tick3');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1094,7 +1105,7 @@ function onDragStart(x, y) {
   if (idx === null || idx === undefined) return;
   isDragging = true;
   selPath    = [idx];
-  playSound('tick');
+  playTick();                  // selPath.length === 1 → tick1
   updateWordDisplay();
   updateTileStyles();
 }
@@ -1107,7 +1118,7 @@ function onDragMove(x, y) {
   const last = selPath[selPath.length - 1];
   if (idx === last) return;
 
-  // Backtrack
+  // Backtrack — no sound on removal
   if (selPath.length >= 2 && idx === selPath[selPath.length - 2]) {
     selPath.pop();
     updateWordDisplay();
@@ -1119,7 +1130,7 @@ function onDragMove(x, y) {
   if (!isAdjacent(last, idx))     return;
 
   selPath.push(idx);
-  playSound('tick');
+  playTick();                  // selPath.length reflects the newly added tile
   updateWordDisplay();
   updateTileStyles();
 }
@@ -1208,12 +1219,14 @@ function beginGame(seed) {
   }
 
   renderBoard();
+  playSound('game_start');
   startTimer();
 }
 
 function playAnywayFromQuality() {
   $('qualityOverlay').classList.add('hidden');
   renderBoard();
+  playSound('game_start');
   startTimer();
 }
 
