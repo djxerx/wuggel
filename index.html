@@ -17,14 +17,17 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:       #0d1117;
-      --panel:    #161b22;
-      --tile-sel: #e94560;
-      --accent:   #e94560;
-      --green:    #4ecca3;
-      --text:     #e2e8f0;
-      --muted:    #6b7280;
-      --radius:   14px;
+      --bg:         #0d1117;
+      --panel:      #161b22;
+      --tile-sel:   #e94560;
+      --accent:     #e94560;
+      --green:      #4ecca3;
+      --text:       #e2e8f0;
+      --muted:      #6b7280;
+      --radius:     14px;
+      /* Board scales to 75% of the shorter screen dimension.
+         clamp floor keeps phones usable; ceiling caps on desktop. */
+      --board-size: clamp(320px, 75vmin, 560px);
     }
 
     html, body {
@@ -44,8 +47,8 @@
     }
 
     .container {
-      width: 100%;
-      max-width: 380px;
+      width: var(--board-size);
+      max-width: var(--board-size);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -127,9 +130,9 @@
     .board {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+      gap: clamp(6px, 1.3vmin, 11px);
       background: var(--panel);
-      padding: 14px;
+      padding: clamp(10px, 2.2vmin, 18px);
       border-radius: 20px;
       touch-action: none;
       user-select: none;
@@ -167,7 +170,7 @@
     .tile.used { opacity: 0.45; }
 
     .tile-letter {
-      font-size: clamp(40px, 10.9vw, 55px);
+      font-size: clamp(38px, 12.5vmin, 78px);
       font-weight: 800;
       text-transform: uppercase;
       line-height: 1;
@@ -178,7 +181,7 @@
       position: absolute;
       bottom: 3px;
       right: 6px;
-      font-size: 13px;
+      font-size: clamp(10px, 2.2vmin, 17px);
       font-weight: 700;
       color: #000000;
       line-height: 1;
@@ -188,7 +191,7 @@
       position: absolute;
       top: -9px;
       left: -9px;
-      font-size: 12px;
+      font-size: clamp(10px, 1.9vmin, 14px);
       font-weight: 800;
       padding: 3px 5px;
       border-radius: 4px;
