@@ -91,6 +91,10 @@
     }
     .new-btn:hover { background: #21293a; }
 
+    /* Version label + button grouped at the right of the header */
+    .header-end { display: flex; align-items: center; gap: 7px; }
+    .version-label { font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: 0.3px; }
+
     /* ── Word display ────────────────────────────────────── */
     .word-display {
       background: var(--panel);
@@ -455,24 +459,25 @@
     .hidden { display: none !important; }
 
     /* ── Game-over side-by-side layout ───────────────────── */
-    /* During play: transparent wrapper so .container remains a direct
-       flex-column child of body — zero change to the normal game layout. */
+    /* #gameLayout is a permanent transparent wrapper — its children
+       (.container and #resultPanel) are treated as direct flex items
+       of body at all times, so the normal game layout is unchanged. */
     .game-layout { display: contents; }
 
-    /* After game ends: switch to a real flex-row that holds the shrunken
-       board and the results panel side by side.  body centres it. */
-    .game-layout.game-over {
-      display: flex;
+    /* When the game ends, body switches from a flex column to a flex row
+       so the shrunken board and the result panel appear side by side.
+       position:fixed overlays are out of flow and unaffected. */
+    body.post-game {
       flex-direction: row;
       flex-wrap: wrap;
       align-items: flex-start;
       justify-content: center;
+      overflow-y: auto;
       gap: 16px;
-      width: min(620px, 98vw);
+      padding: 16px 12px;
     }
-    .game-layout.game-over .container {
+    body.post-game .container {
       --board-size: clamp(160px, 38vmin, 240px);
-      flex: 0 0 auto;
     }
 
     /* ── Inline result panel ─────────────────────────────── */
@@ -481,9 +486,7 @@
       border: 1px solid #374151;
       border-radius: 24px;
       padding: 20px 18px;
-      flex: 1 1 260px;
-      min-width: 260px;
-      max-width: 300px;
+      width: min(300px, 92vw);
       max-height: 90vh;
       overflow-y: auto;
       scrollbar-width: thin;
@@ -493,9 +496,6 @@
     .result-panel h2 { font-size: 20px; color: var(--muted); margin-bottom: 3px; text-align: center; }
     .result-panel .result-final { font-size: 54px; }
     .result-panel .result-word-list { max-height: 220px; }
-
-    /* Allow scrolling while reviewing results; keep horizontal centering */
-    body.post-game { overflow-y: auto; justify-content: flex-start; padding-top: 16px; }
 
     /* ── Floating score pop ──────────────────────────────── */
     .score-pop {
@@ -533,7 +533,10 @@
     <div class="timer-wrap">
       <div class="timer-value ok" id="timer">2:00</div>
     </div>
-    <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
+    <div class="header-end">
+      <span class="version-label">v1.0</span>
+      <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
+    </div>
   </div>
 
   <div class="word-display">
@@ -1069,21 +1072,33 @@ function updateWordDisplay() {
   }
 
   if (foundWords.has(word)) {
-    el.className  = 'word-text dup';
-    el.textContent = word;
-    sc.className  = 'word-score';
+    const oldPts = foundWords.get(word);
+    const newPts = calcWordScore(selPath);
+    if (newPts > oldPts) {
+      // Better path found — preview the improvement
+      const diff = newPts - oldPts;
+      el.className   = 'word-text valid';
+      el.textContent = word;
+      sc.innerHTML   = `${newPts}&thinsp;<span style="color:#3b82f6;font-size:0.85em">+${diff}</span>`;
+      sc.className   = 'word-score show';
+    } else {
+      el.className   = 'word-text dup';
+      el.textContent = word;
+      sc.className   = 'word-score';
+      sc.innerHTML   = '';
+    }
     return;
   }
 
   if (word.length >= 2 && WORDS.has(word)) {
-    el.className  = 'word-text valid';
-    const pts     = calcWordScore(selPath);
+    el.className   = 'word-text valid';
+    const pts      = calcWordScore(selPath);
     sc.textContent = `+${pts}`;
-    sc.className  = 'word-score show';
+    sc.className   = 'word-score show';
   } else {
-    el.className  = 'word-text invalid';
-    sc.className  = 'word-score';
-    sc.textContent = '';
+    el.className   = 'word-text invalid';
+    sc.className   = 'word-score';
+    sc.innerHTML   = '';
   }
   el.textContent = word;
 }
@@ -1091,7 +1106,8 @@ function updateWordDisplay() {
 function updateTileStyles() {
   const tiles   = $('board').querySelectorAll('.tile');
   const word    = currentWord();
-  const isValid = word.length >= 2 && WORDS.has(word) && !foundWords.has(word);
+  const isValid = word.length >= 2 && WORDS.has(word) &&
+    (!foundWords.has(word) || calcWordScore(selPath) > foundWords.get(word));
 
   tiles.forEach((t, i) => {
     t.classList.remove('selected', 'valid-word');
@@ -1112,10 +1128,27 @@ function submitWord() {
     shakeWordDisplay();
     return clearSelection();
   }
+
   if (foundWords.has(word)) {
-    playSound('duplicate');
-    flashWordDisplay('dup');
-    return clearSelection();
+    const oldPts = foundWords.get(word);
+    const newPts = calcWordScore(selPath);
+    if (newPts > oldPts) {
+      // Improved path — score only the difference
+      const diff = newPts - oldPts;
+      gameScore += diff;
+      foundWords.set(word, newPts);
+      playSound('word_found');
+      $('score').textContent = gameScore;
+      updateWordInList(word, newPts);
+      showScorePop(diff, selPath[selPath.length - 1]);
+      flashImprovedWord(newPts, diff);
+      clearSelection();
+    } else {
+      playSound('duplicate');
+      flashWordDisplay('dup');
+      clearSelection();
+    }
+    return;
   }
 
   const pts = calcWordScore(selPath);
@@ -1135,6 +1168,22 @@ function flashWordDisplay(cls) {
   el.className = `word-text ${cls}`;
   setTimeout(() => { el.className = 'word-text neutral'; el.textContent = ''; }, 600);
   $('wordScore').className = 'word-score';
+  $('wordScore').innerHTML = '';
+}
+
+// Briefly show the new total score + blue "+diff" for an improved duplicate
+function flashImprovedWord(newPts, diff) {
+  const el = $('wordText');
+  const sc = $('wordScore');
+  el.className = 'word-text valid';
+  sc.innerHTML = `${newPts}&thinsp;<span style="color:#3b82f6;font-size:0.85em">+${diff}</span>`;
+  sc.className = 'word-score show';
+  setTimeout(() => {
+    el.className = 'word-text neutral';
+    el.textContent = '';
+    sc.className = 'word-score';
+    sc.innerHTML = '';
+  }, 1000);
 }
 
 function shakeWordDisplay() {
@@ -1155,14 +1204,27 @@ function clearSelection() {
   $('wordText').textContent  = '';
   $('wordText').className    = 'word-text neutral';
   $('wordScore').className   = 'word-score';
+  $('wordScore').innerHTML   = '';
 }
 
 function addWordToList(word, pts) {
   const grid = $('wordGrid');
   const div  = document.createElement('div');
-  div.className = 'found-word';
-  div.innerHTML = `<span>${word.toUpperCase()}</span><span class="fw-pts">${pts}</span>`;
+  div.className    = 'found-word';
+  div.dataset.word = word;
+  div.innerHTML    = `<span>${word.toUpperCase()}</span><span class="fw-pts">${pts}</span>`;
   grid.prepend(div);
+  $('wordsPanel').scrollTop = 0;
+}
+
+// Update an existing word chip when a higher-scoring path is found
+function updateWordInList(word, newPts) {
+  const grid     = $('wordGrid');
+  const existing = grid.querySelector(`[data-word="${word}"]`);
+  if (existing) {
+    existing.querySelector('.fw-pts').textContent = newPts;
+    grid.prepend(existing);   // float it back to the top
+  }
   $('wordsPanel').scrollTop = 0;
 }
 
@@ -1320,7 +1382,6 @@ function newGame() {
   gameActive = false;
   // Reset game-over layout immediately so seed overlay appears over a clean screen
   $('resultPanel').classList.add('hidden');
-  $('gameLayout').classList.remove('game-over');
   document.body.classList.remove('post-game');
   $('newGameBtn').textContent = 'New Game';
   showSeedOverlay();
@@ -1339,7 +1400,6 @@ function beginGame(seed) {
   $('wordText').textContent  = '';
   $('wordScore').className   = 'word-score';
   $('resultPanel').classList.add('hidden');
-  $('gameLayout').classList.remove('game-over');
   document.body.classList.remove('post-game');
   $('seedOverlay').classList.add('hidden');
   $('newGameBtn').textContent = 'End Game';
@@ -1454,7 +1514,6 @@ function endGame() {
   showResultTab('found');      // always open on Found tab
 
   // Show inline result panel beside the (now-shrunken) board
-  $('gameLayout').classList.add('game-over');
   $('resultPanel').classList.remove('hidden');
   document.body.classList.add('post-game');
 }
