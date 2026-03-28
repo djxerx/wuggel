@@ -456,6 +456,41 @@
     /* ── Utility ─────────────────────────────────────────── */
     .vis-hidden { display: none !important; }
 
+    /* ── Settings button ─────────────────────────────────── */
+    .settings-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 5px 7px;
+      border-radius: 8px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .settings-btn:hover { color: var(--text); background: #1f2937; }
+
+    /* ── Settings card ───────────────────────────────────── */
+    .settings-card {
+      background: var(--panel);
+      border: 1px solid #374151;
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+      width: min(320px, 90vw);
+      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .settings-card h2 { font-size: 20px; margin-bottom: 6px; }
+    .settings-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+    .setting-row { margin-bottom: 20px; text-align: left; }
+    .setting-label { font-size: 13px; font-weight: 700; color: var(--text); display: block; margin-bottom: 4px; }
+    .setting-desc { font-size: 12px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+    .setting-slider-row { display: flex; align-items: center; gap: 12px; }
+    .setting-slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+    .setting-slider-val { font-size: 15px; font-weight: 700; color: var(--accent); min-width: 38px; text-align: right; }
+
     /* ── Floating score pop ──────────────────────────────── */
     .score-pop {
       position: fixed;
@@ -492,6 +527,22 @@
       <div class="timer-value ok" id="timer">2:00</div>
     </div>
     <div class="header-end">
+      <button class="settings-btn" onclick="openSettings()" title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06
+                   a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09
+                   A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83
+                   l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09
+                   A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83
+                   l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09
+                   a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83
+                   l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09
+                   a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
       <span class="version-label">v0.3</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
@@ -555,9 +606,9 @@
     <div class="q-icon">⚠️</div>
     <h2>No Ideal Board Found</h2>
     <p>Tried <strong><span id="qualityTriedCount">150</span> seeds</strong> — none reached
-       <strong>200 words</strong> with a <strong>150-point word</strong>.</p>
+       <strong>40 common words</strong> with <strong>2 words ≥ 100 pts</strong>.</p>
     <p style="margin-top:10px">
-      Best board: <strong><span id="qualityWordCount">0</span> words</strong>
+      Best board: <strong><span id="qualityWordCount">0</span> common words</strong>
       &nbsp;·&nbsp; top word <strong><span id="qualityTopScore">0</span> pts</strong>
     </p>
     <div class="quality-retry-row">
@@ -586,6 +637,29 @@
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
               onclick="newGame()">New Game</button>
     </div>
+  </div>
+</div>
+
+<!-- Settings overlay -->
+<div class="overlay hidden" id="settingsOverlay">
+  <div class="settings-card">
+    <h2>Settings</h2>
+    <p class="settings-subtitle">Paused while open</p>
+    <div class="setting-row">
+      <span class="setting-label">Corner Dead Zone</span>
+      <p class="setting-desc">
+        When swiping to a horizontal or vertical neighbour, a triangular zone
+        at each near corner is blocked. This lets you pass through corners to
+        reach diagonal tiles without accidentally registering the straight tile.
+        Drag the slider to resize the triangle (0 = off).
+      </p>
+      <div class="setting-slider-row">
+        <input type="range" id="cornerGuardSlider" min="0" max="50" step="1" value="25"
+               oninput="onCornerGuardSlider(this.value)">
+        <span class="setting-slider-val" id="cornerGuardPct">25%</span>
+      </div>
+    </div>
+    <button class="play-btn" onclick="closeSettings()">Done</button>
   </div>
 </div>
 
@@ -662,6 +736,31 @@ async function loadDictionary() {
   } catch (_) {
     // fetch blocked on file:// or file missing — built-in list used
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WORD10K  — common-word list used for board quality checks.
+//  Loaded from word10k.txt when served; built-in list is the
+//  fallback so quality checking always works offline.
+// ═══════════════════════════════════════════════════════════
+const BUILTIN_WORD10K = `aa ab ad ae ag ah ai al am an ar as at aw ax ay ba be bi bo by da de do ed ef eh el em en er es et ex fa fe gi go ha he hi hm ho id if in is it jo ka ki la li lo ma me mi mo mu my na no nu of oh oi om on op or os ow ox oy pa pe pi qi re sh si so ta ti to uh um un up us we wo xi ya ye yo za ace act add age ago aid aim air ale all ant ape apt arc are ark arm art ask ate awe axe bad bag ban bar bat bay bed big bin bit bow box bun bus but buy cab can cap car cat cod cot cow cub cue cup cut dam day den dig dip dog dot dry dub ear eat egg ego elk elm end era eve eye fan far fat fee fit fly foe fog fox fun fur gap gas get gin gob god gut guy ham has hat hay hen her hew hit hob hoe hog hop hot how hub hug hum hut ice ill ink ion ire ivy jam jar jaw jet jig job joy jug jut keg kin kit lab lag lap law lay led leg lid lip lit log lot low mad man map mat mob mop mud mug nag nap net new nit nod nor not now nun oak oar odd off oil old orb ore our out owe owl own pad pan par pat paw pay pea peg pet pig pin pit pop pot pun pup put rag ram ran rat raw ray red ref rid rig rob rod rot row rub rug run rut rye sag sap sat saw say sea set sew sir sit ski sky sob sod son sow spy sub sue sum sun tab tan tap tar tax tea ten tie tin tip ton too top toy tub tug two urn use van vat via vie vim vow wad wag war was wax web wed wet wig win wit won woo yam yaw yet yew you able ache acid acre aged aids aims airs akin also alum amid amps apes apex arcs area arms arts atom atop avid awed axle baby back bake bald bale ball balm band bane bang bank bare bark barn bars base bash bass bath bats bean bear beat beds beef been beer bell belt bend best bias bike bile bill bind bins bite blow blue blur boar boat bold bolt bond bone book boom bore born boss bout bowl brew bulb bulk bull bunk buns burn busy cage cake call calm came camp cane cape card care cars cart cave cell chap chat chin chop clad clam clan clap claw clay clod clot club clue coal coat coil coin cola cold colt comb come cone cook cool cord core cork corn cost dove down drag draw drew drip drop drum dumb dump dune dusk dust each earl earn ears ease east edge emit ends epic even fact fade fail fair fall fame fans fare farm fast fate feat feed felt fend file fill film find fine fire firm fish fist fits five flag flat flew flip flow foam fold folk fond font food fool foot fore fork form foul four fowl fray free frog from fuel full gale game gash gasp gate gave gaze gear gems gent gilt glad glee glob glow glue gnaw goat goes gong gown grab gram gray grew grin grip grit grow grub gulf gull gust hack hail hair hale half halt hang hard hare harm harp hash haul have heal heap heat heel helm help herb here herd hide hike hill hint hive hole home hood hook hope horn host hull hulk hunk hunt hurl hurt husk idle inch iron jade jail jaws jerk jolt joys jugs jump just keen keep kilt kind king knob knot know lace lack laid lake lame lamp lane lard lark lash last late lava lawn lead leaf lean leap left lend lens levy lick lies life lift like limb lime limp line link lion lips list live load loan loft lore lose loss lost luck lump lure lurk lust mace maid mail main male mall malt mane mare mark mars mash mast mate maul maze meal mean meat melt memo mend mere mesh mild mile milk mill mind mine mint mist moan moat mock mode mold mole monk mood moor mope more moss most moth move much muck mule must mute myth nail nape navy near neat neck need nice nine node noon norm nose note noun nude odds omen once only ooze open oral orca oval oven over owed pack pain paid pale palm pang pant pare park part past path pave peak peat peck peel pelt pens pick pier pine pink pint pipe plan play plea plot plug plum plus poem pole poll pond pool poor pore pork port pose post pour prey prod puff pull pulp pump pure push race rack rage raid rail rain rake ramp rang rank rate rave read real reap reel rein rest rice rich ride ring riot ripe rise risk rite roam roar robe rode roll roof room root rope rose rote rout rove ruby rude ruin rule rump rune rush rust sage sail sake salt sand sane sank save seam seat seed seek seep self sell send shed shin ship shoe shop shot show shut sick side sigh silk sill silo sing sink sire site size skid skin skip slab slag slap slat sled slew slim slip slot slow slug slur snag snap snob snub soak soap soar sock soft soil sold sole some song soon soot sore sort soul sour sown span spar spin spit spot stub stud such suit sung sunk sure surf swap sync tack tail tale talk tall tame tank tape tarn tart task teal team tear tell tend tent test than that thaw then tied tier tile till tilt time tire toad toil told toll tomb tone tool tore torn toss tour town trap tray trek trim trio trip trod trot true tuft turf tusk twig twin type ugly undo unit upon urge used vale vamp vane veer veil vein vent very vest veto view vile vine vise void volt vote wail wake walk wall wand ware wart wary wash wasp wave weak weal wear weed week well went west wide wile will wilt wind wine wing wire wish wolf womb word wore worm worn wrap yell your zeal zone zoom aback about above acids acorn actor acute added adore adorn adult after again agile aging ahead alarm album alone along aloft aloud altar alter amaze amble amend among ample amuse angel anger angle angry ankle annoy apple apply arena argue arise arose arson aside awake award awash awful awoke beach began being below bench berth birth black blade blaze bleat bleed blend bless bliss block blood bloom blown board boast brave brawn bread break brine brink broke broom broth brown brush build bully bunch burly burns burst buyer cabin carry catch cease chalk chant chaos charm chase cheap cheat check cheer chest child choir chord chose clang clash clasp clean clear clerk click cliff climb clink cloak clock clone close cloth cloud coach coast crane crave creak cream creek crest crime cross crown cruel crumb crush crust curly curse dance dated dawns dealt decay demon dense depth devil diced dirty dodge doing dolls draft drain drama drape drawn dread dream dress drill drink drive drone drool drove dummy dumps dwell earth elder elbow elect ember enjoy enter equal equip error erupt essay evade event exact exalt excel exert exist extra fable fairy false fancy farce feast fence fetch fever fiend fiery filth final fixed flame flash float flock flood flour fluid flunk flute flyer force forge forgo found foyer frail frame fraud freak freed fresh frost froze fruit fully funny genre ghost giant given gleam glean glide glint gloss glove grace grade grain grasp grass grate gravy graze greet grind groan groin grope gross grove grown growl guard guess guide guild guile guise happy handy haste haven heard heart heavy hedge herbs hinge hitch hoard honey honor hoped horde hover human humor hurry image imply infer inner input inter irked judge juice juicy jumbo knack knave kneel knife knock known label lance laser latch later laugh layer leapt lease least ledge legal lemon level light limit lined linen liver lodge lofty logic lousy lucky lumpy lunge lusty magic maker maple march match maybe meant medal mercy merit messy metal might mirth miser mixed model moldy moody moose mourn mouse mouth mulch mural nasal nasty naval noble noise north noted occur ocean offer often olive onset ozone paint panel panic parry party patch pause peace peach pearl pedal penal perch peril perky phase phone piano pilot pinch pivot plain plane plank plant plate plaza plead plume plumb plunk plush poach poker poppy pound preen press pride prime print prior prize probe prone proof prose proud prowl prune pupil purge raise rally ranch range rapid raven reach rebel refer reign relax relic reply resin rider ripen risen risky rivet roast robot rocky rouge rough round rouse rowdy ruled rusty savor scale scamp scare scorn scout screw scrub seize sense seven shade shake shall shame shape share shark sharp shelf shell shift shine shirt shock shore short shout shove shown shred shrub shrug shunt siege siren sixth sixty skimp skirt skull slant slash slate sloth slump smack small smear smell smile smirk smoke snail snake snare sneak snout solid sorry south space spare spark spawn speak spear speck speed spell spend spice spill spine spoke spook spool spout squad squat stack staff stain stale stalk stall stamp stand stank stare stark start steam steel steep steer stern stiff still sting stink stoic stomp stone store storm story stout stray strew stuck study stuff stung sugar sunny swamp swear swipe swirl swoop taboo tacky taint talon taste tasty teach tease tense tenth their there thick think third thorn those three threw tiger tight tinge token touch tough towel tower toxic track trail train trait tramp trial tribe trick tried troop troth trout truce trunk trust truth tuber tummy tuner tunic twain tweed tweet twice twine twirl uncle under union unite until upset urban usher usual utter vague valid valor value vapor vault vigor visit vocal voice wader wagon waist waste watch water weave wedge weigh weird wield witty world worst worth would wreck write wrote yield zebra zesty`;
+
+let WORD10K = new Set(BUILTIN_WORD10K.trim().split(/\s+/).filter(w => w.length >= 2));
+
+async function loadWord10K() {
+  try {
+    const res = await fetch('word10k.txt');
+    if (!res.ok) return;
+    const text  = await res.text();
+    const words = text
+      .split(/\r?\n/)
+      .map(l => l.trim().toLowerCase())
+      .filter(l => l.length >= 2 && !l.startsWith('#'));
+    if (words.length > 100) {
+      WORD10K = new Set([...WORD10K, ...words]);
+      console.log(`Word10K: ${WORD10K.size.toLocaleString()} quality words loaded`);
+    }
+  } catch (_) {}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -892,6 +991,76 @@ function generateBoard() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  BOARD FIXES  (applied after generateBoard, before quality check)
+//  All random choices use the same `rng` instance that generated
+//  the board, so identical seeds always produce identical results.
+// ═══════════════════════════════════════════════════════════
+const VOWELS_LETTERS  = new Set(['A','E','I','O','U']);
+const HIGH_VAL_LETTERS = new Set(['J','X','Z']);
+
+// Fix 1 — Q without a neighbouring U.
+// If Q exists and none of its ≤8 adjacent tiles is a U,
+// there is a 75 % chance to convert a random adjacent tile to U.
+function fixQWithoutU() {
+  for (let qi = 0; qi < 16; qi++) {
+    if (boardData[qi].letter !== 'Q') continue;
+    const qr  = Math.floor(qi / 4), qc = qi % 4;
+    const adj = [];
+    let hasU  = false;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const nr = qr + dr, nc = qc + dc;
+        if (nr < 0 || nr > 3 || nc < 0 || nc > 3) continue;
+        const ni = nr * 4 + nc;
+        adj.push(ni);
+        if (boardData[ni].letter === 'U') hasU = true;
+      }
+    }
+    if (!hasU && adj.length > 0 && rng() < 0.75) {
+      const ni = adj[Math.floor(rng() * adj.length)];
+      boardData[ni] = { letter: 'U', score: LETTER_CONFIG['U'].s, mult: boardData[ni].mult };
+    }
+  }
+}
+
+// Fix 2 — More than 2 combined J / X / Z tiles.
+// There is a 75 % chance to replace one of them with a random
+// 4-point or 5-point letter (F H V W K — not J X Z Q).
+function fixExcessiveHighValueLetters() {
+  const hvIdx = boardData.reduce((a, c, i) => { if (HIGH_VAL_LETTERS.has(c.letter)) a.push(i); return a; }, []);
+  if (hvIdx.length <= 2 || rng() >= 0.75) return;
+  const ti    = hvIdx[Math.floor(rng() * hvIdx.length)];
+  const cands = Object.entries(LETTER_CONFIG)
+    .filter(([l, c]) => (c.s === 4 || c.s === 5) && !HIGH_VAL_LETTERS.has(l) && l !== 'Q')
+    .map(([l]) => l);
+  if (!cands.length) return;
+  const nl = cands[Math.floor(rng() * cands.length)];
+  boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
+}
+
+// Fix 3 — More than 8 vowels.
+// Replace a random vowel with a random 1-point consonant (L N R S T).
+function fixExcessiveVowels() {
+  const vIdx = boardData.reduce((a, c, i) => { if (VOWELS_LETTERS.has(c.letter)) a.push(i); return a; }, []);
+  if (vIdx.length <= 8) return;
+  const ti    = vIdx[Math.floor(rng() * vIdx.length)];
+  const cands = Object.entries(LETTER_CONFIG)
+    .filter(([l, c]) => c.s === 1 && !VOWELS_LETTERS.has(l))
+    .map(([l]) => l);
+  if (!cands.length) return;
+  const nl = cands[Math.floor(rng() * cands.length)];
+  boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
+}
+
+// Run all three fixes in order (uses global `rng`, deterministic per seed).
+function applyBoardFixes() {
+  fixQWithoutU();
+  fixExcessiveHighValueLetters();
+  fixExcessiveVowels();
+}
+
+// ═══════════════════════════════════════════════════════════
 //  RENDER BOARD
 // ═══════════════════════════════════════════════════════════
 function renderBoard() {
@@ -980,7 +1149,7 @@ function isAdjacent(a, b) {
 }
 
 // True only for purely horizontal or vertical neighbours (not diagonal).
-// Used by the diagonal-ease guard in onDragMove.
+// Used by the corner dead-zone guard in onDragMove.
 function isHVAdjacent(a, b) {
   const ar = Math.floor(a / 4), ac = a % 4;
   const br = Math.floor(b / 4), bc = b % 4;
@@ -1243,32 +1412,38 @@ function onDragMove(x, y) {
   if (selPath.includes(idx))      return;
   if (!isAdjacent(last, idx))     return;
 
-  // 20% depth guard ─────────────────────────────────────────
-  // The touch/cursor must be at least 20% inside the candidate tile on
-  // every side before the move registers.  Prevents accidental edge-clip
-  // registrations when the finger is skimming tile borders.
-  // (Applies to all neighbours — diagonal and straight alike.)
-  {
+  // Corner dead-zone guard ─────────────────────────────────
+  // For straight (H or V) neighbours only: block the move if the touch
+  // falls inside a triangular corner zone of the candidate tile.
+  // The triangle sits at whichever two corners are closest to the current
+  // tile, defined by: (distAlongEdge1) + (distAlongEdge2) < D
+  // where D = cornerGuardFrac × tileSize.  This lets the finger swing
+  // through a corner toward a diagonal tile without mis-registering the
+  // straight neighbour.
+  if (isHVAdjacent(last, idx) && cornerGuardFrac > 0) {
     const tileEl = $('board').querySelectorAll('.tile')[idx];
     if (tileEl) {
-      const r  = tileEl.getBoundingClientRect();
-      const rx = (x - r.left) / r.width;
-      const ry = (y - r.top)  / r.height;
-      if (rx < 0.20 || rx > 0.80 || ry < 0.20 || ry > 0.80) return;
-    }
-  }
+      const r        = tileEl.getBoundingClientRect();
+      const D        = cornerGuardFrac * Math.min(r.width, r.height);
+      const lastRow  = Math.floor(last / 4), lastCol = last % 4;
+      const idxRow   = Math.floor(idx  / 4), idxCol  = idx  % 4;
+      let blocked    = false;
 
-  // Diagonal-ease guard ─────────────────────────────────────
-  // When entering a straight (H or V) neighbour, reject the move if the
-  // touch/cursor is inside the top or bottom 8% of that tile's height.
-  // The finger is near a corner and almost certainly heading for a diagonal
-  // tile — accepting the H/V tile here would break the intended diagonal path.
-  if (isHVAdjacent(last, idx)) {
-    const tileEl = document.elementFromPoint(x, y)?.closest('.tile');
-    if (tileEl) {
-      const r    = tileEl.getBoundingClientRect();
-      const relY = (y - r.top) / r.height;
-      if (relY < 0.08 || relY > 0.92) return;
+      if      (idxCol > lastCol) { // neighbour is to the right  → guard left corners of B
+        if ((x - r.left) + (y - r.top)    < D) blocked = true;
+        if ((x - r.left) + (r.bottom - y) < D) blocked = true;
+      } else if (idxCol < lastCol) { // neighbour is to the left → guard right corners of B
+        if ((r.right - x) + (y - r.top)    < D) blocked = true;
+        if ((r.right - x) + (r.bottom - y) < D) blocked = true;
+      } else if (idxRow > lastRow) { // neighbour is below       → guard top corners of B
+        if ((x - r.left)  + (y - r.top) < D) blocked = true;
+        if ((r.right - x) + (y - r.top) < D) blocked = true;
+      } else {                       // neighbour is above       → guard bottom corners of B
+        if ((x - r.left)  + (r.bottom - y) < D) blocked = true;
+        if ((r.right - x) + (r.bottom - y) < D) blocked = true;
+      }
+
+      if (blocked) return;
     }
   }
 
@@ -1365,8 +1540,9 @@ function beginGame(seed) {
 }
 
 // ── Board quality constants ──────────────────────────────
-const QUALITY_MIN_WORDS   = 200;
-const QUALITY_MIN_TOP_PTS = 150;
+const QUALITY_MIN_WORDS   = 40;    // min Word10K matches on board
+const QUALITY_MIN_TOP_PTS = 100;   // score threshold for "top" words
+const QUALITY_TOP_COUNT   = 2;     // need at least this many top words
 const QUALITY_MAX_TRIES   = 150;   // default tries per run
 const QUALITY_SEED_STEP   = 1_000_000;
 
@@ -1375,8 +1551,11 @@ let qualityBaseSeed   = 0;   // original seed from the player
 let qualityTotalTried = 0;   // cumulative attempts across all runs
 
 function boardMeetsQuality(words) {
-  if (words.size < QUALITY_MIN_WORDS) return false;
-  return [...words.values()].some(pts => pts >= QUALITY_MIN_TOP_PTS);
+  // Filter the full word map down to only Word10K entries
+  const qualWords = new Map([...words.entries()].filter(([w]) => WORD10K.has(w)));
+  if (qualWords.size < QUALITY_MIN_WORDS) return false;
+  const topCount = [...qualWords.values()].filter(pts => pts >= QUALITY_MIN_TOP_PTS).length;
+  return topCount >= QUALITY_TOP_COUNT;
 }
 
 // findQualityBoard(baseSeed, startAttempt, maxTries)
@@ -1392,6 +1571,7 @@ function findQualityBoard(baseSeed, startAttempt = 0, maxTries = QUALITY_MAX_TRI
     currentSeed      = trySeed;
     rng              = makePRNG(trySeed);
     generateBoard();
+    applyBoardFixes();           // Q/U fix, J/X/Z fix, vowel fix — uses same rng
     allPossibleWords = findAllWords();
 
     if (boardMeetsQuality(allPossibleWords)) {
@@ -1404,11 +1584,10 @@ function findQualityBoard(baseSeed, startAttempt = 0, maxTries = QUALITY_MAX_TRI
 
   // All attempts in this run exhausted — record cumulative total, show overlay
   qualityTotalTried = startAttempt + maxTries;
-  const topScore = allPossibleWords.size > 0
-    ? Math.max(...allPossibleWords.values())
-    : 0;
+  const qualWords  = new Map([...allPossibleWords.entries()].filter(([w]) => WORD10K.has(w)));
+  const topScore   = qualWords.size > 0 ? Math.max(...qualWords.values()) : 0;
   $('qualityTriedCount').textContent = qualityTotalTried;
-  $('qualityWordCount').textContent  = allPossibleWords.size;
+  $('qualityWordCount').textContent  = qualWords.size;
   $('qualityTopScore').textContent   = topScore;
   $('qualityRetryInput').value       = QUALITY_MAX_TRIES;  // reset input default
   $('qualityOverlay').classList.remove('hidden');
@@ -1495,10 +1674,53 @@ if ('serviceWorker' in navigator) {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════
+
+// Fraction of tile size used as the corner dead-zone triangle.
+// 0 = disabled; 0.25 = 25 % of the shorter tile dimension.
+let cornerGuardFrac = 0.25;
+let _settingsPaused = false;
+
+// Apply a raw slider value (0–50) to the live variable + UI label
+function onCornerGuardSlider(val) {
+  cornerGuardFrac = parseInt(val, 10) / 100;
+  $('cornerGuardPct').textContent = val + '%';
+  localStorage.setItem('wordswipe_cornerGuard', val);
+}
+
+function openSettings() {
+  // Pause the countdown while the panel is open
+  if (gameActive) {
+    _settingsPaused = true;
+    clearInterval(timerHandle);
+  }
+  $('settingsOverlay').classList.remove('hidden');
+}
+
+function closeSettings() {
+  $('settingsOverlay').classList.add('hidden');
+  if (_settingsPaused) {
+    _settingsPaused = false;
+    if (gameActive) startTimer();   // resume where we left off
+  }
+}
+
+// Restore saved setting on load
+(function () {
+  const saved = localStorage.getItem('wordswipe_cornerGuard');
+  if (saved !== null) {
+    $('cornerGuardSlider').value    = saved;
+    $('cornerGuardPct').textContent = saved + '%';
+    cornerGuardFrac = parseInt(saved, 10) / 100;
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════
 //  START
 // ═══════════════════════════════════════════════════════════
 loadSounds();
-loadDictionary().finally(() => {
+Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
   TRIE = buildTrie(WORDS);   // build once; reused every game
   showSeedOverlay();
 });
