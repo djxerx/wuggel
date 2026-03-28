@@ -451,19 +451,28 @@
 
     /* ── Utility ─────────────────────────────────────────── */
     .vis-hidden { display: none !important; }
+    /* General-purpose hidden class used on non-overlay elements */
+    .hidden { display: none !important; }
 
     /* ── Game-over side-by-side layout ───────────────────── */
-    .game-layout {
+    /* During play: transparent wrapper so .container remains a direct
+       flex-column child of body — zero change to the normal game layout. */
+    .game-layout { display: contents; }
+
+    /* After game ends: switch to a real flex-row that holds the shrunken
+       board and the results panel side by side.  body centres it. */
+    .game-layout.game-over {
       display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
       align-items: flex-start;
       justify-content: center;
       gap: 16px;
-      flex-wrap: wrap;
+      width: min(620px, 98vw);
     }
-
-    /* Shrink the board when showing side-by-side results */
     .game-layout.game-over .container {
-      --board-size: clamp(160px, 42vmin, 250px);
+      --board-size: clamp(160px, 38vmin, 240px);
+      flex: 0 0 auto;
     }
 
     /* ── Inline result panel ─────────────────────────────── */
@@ -472,7 +481,9 @@
       border: 1px solid #374151;
       border-radius: 24px;
       padding: 20px 18px;
-      width: min(300px, 92vw);
+      flex: 1 1 260px;
+      min-width: 260px;
+      max-width: 300px;
       max-height: 90vh;
       overflow-y: auto;
       scrollbar-width: thin;
@@ -483,8 +494,8 @@
     .result-panel .result-final { font-size: 54px; }
     .result-panel .result-word-list { max-height: 220px; }
 
-    /* Allow scrolling while reviewing results */
-    body.post-game { overflow-y: auto; align-items: flex-start; }
+    /* Allow scrolling while reviewing results; keep horizontal centering */
+    body.post-game { overflow-y: auto; justify-content: flex-start; padding-top: 16px; }
 
     /* ── Floating score pop ──────────────────────────────── */
     .score-pop {
