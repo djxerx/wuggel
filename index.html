@@ -472,24 +472,77 @@
     }
     .settings-btn:hover { color: var(--text); background: #1f2937; }
 
-    /* ── Settings card ───────────────────────────────────── */
+    /* ── Settings overlay ─────────────────────────────────── */
     .settings-card {
       background: var(--panel);
       border: 1px solid #374151;
       border-radius: 24px;
-      padding: 32px 28px;
-      text-align: center;
-      width: min(320px, 90vw);
-      animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      padding: 24px 22px 20px;
+      width: min(380px, 94vw);
+      max-height: 88vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #374151 transparent;
     }
-    .settings-card h2 { font-size: 20px; margin-bottom: 6px; }
-    .settings-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
-    .setting-row { margin-bottom: 20px; text-align: left; }
-    .setting-label { font-size: 13px; font-weight: 700; color: var(--text); display: block; margin-bottom: 4px; }
-    .setting-desc { font-size: 12px; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
-    .setting-slider-row { display: flex; align-items: center; gap: 12px; }
+    .settings-card h2 { font-size: 20px; text-align: center; margin-bottom: 2px; }
+    .settings-subtitle { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 18px; }
+
+    .setting-section { margin-bottom: 18px; }
+    .setting-section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--muted); margin-bottom: 8px;
+      border-bottom: 1px solid #1f2937; padding-bottom: 4px;
+    }
+    /* Rows that hold a label + description + slider */
+    .setting-row { margin-bottom: 12px; }
+    .setting-label { font-size: 14px; font-weight: 600; display: block; margin-bottom: 4px; }
+    .setting-desc { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+    .setting-slider-row { display: flex; align-items: center; gap: 10px; }
     .setting-slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
-    .setting-slider-val { font-size: 15px; font-weight: 700; color: var(--accent); min-width: 38px; text-align: right; }
+    .setting-slider-val { font-size: 13px; color: var(--accent); width: 38px; text-align: right; }
+
+    /* Rows that hold a label + toggle */
+    .setting-toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 0;
+    }
+    .setting-toggle-label { font-size: 14px; }
+
+    /* iOS-style toggle switch */
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
+    .toggle-switch input { display: none; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: #374151;
+      border-radius: 13px; cursor: pointer; transition: background .2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 20px; height: 20px; background: #fff; border-radius: 50%;
+      top: 3px; left: 3px; transition: transform .2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--green); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+    /* Rows that hold a label + number input */
+    .setting-number-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 0;
+    }
+    .setting-number-label { font-size: 14px; }
+    .setting-number {
+      width: 72px; background: #1f2937; border: 1px solid #374151;
+      border-radius: 8px; color: var(--text); font-size: 14px;
+      text-align: center; padding: 5px 8px;
+    }
+
+    /* Gear link shown at bottom of seed overlay */
+    .seed-settings-link {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      margin-top: 12px; font-size: 12px; color: var(--muted);
+      cursor: pointer; user-select: none; transition: color .15s;
+    }
+    .seed-settings-link:hover { color: var(--text); }
+    .seed-gear-svg { width: 14px; height: 14px; fill: currentColor; }
 
     /* ── Floating score pop ──────────────────────────────── */
     .score-pop {
@@ -543,7 +596,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.3</span>
+      <span class="version-label">v0.4</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -597,6 +650,12 @@
     <div class="seed-btn-row">
       <button class="play-btn" onclick="startFromSeed()">Start</button>
     </div>
+    <div class="seed-settings-link" onclick="openSettings()">
+      <svg class="seed-gear-svg" viewBox="0 0 20 20">
+        <path d="M10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.07-1.62-.9-.52a7.1 7.1 0 0 0 0-1.72l.9-.52a1 1 0 0 0 .37-1.37l-1-1.73a1 1 0 0 0-1.37-.37l-.9.52A6.93 6.93 0 0 0 13 5.64V4.5a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v1.14a6.93 6.93 0 0 0-1.27.72l-.9-.52a1 1 0 0 0-1.37.37l-1 1.73a1 1 0 0 0 .37 1.37l.9.52a7.1 7.1 0 0 0 0 1.72l-.9.52a1 1 0 0 0-.37 1.37l1 1.73a1 1 0 0 0 1.37.37l.9-.52c.4.27.82.5 1.27.72V15.5a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-1.14a6.93 6.93 0 0 0 1.27-.72l.9.52a1 1 0 0 0 1.37-.37l1-1.73a1 1 0 0 0-.37-1.37z"/>
+      </svg>
+      Settings
+    </div>
   </div>
 </div>
 
@@ -643,23 +702,89 @@
 <!-- Settings overlay -->
 <div class="overlay hidden" id="settingsOverlay">
   <div class="settings-card">
-    <h2>Settings</h2>
-    <p class="settings-subtitle">Paused while open</p>
-    <div class="setting-row">
-      <span class="setting-label">Corner Dead Zone</span>
-      <p class="setting-desc">
-        When swiping to a horizontal or vertical neighbour, a triangular zone
-        at each near corner is blocked. This lets you pass through corners to
-        reach diagonal tiles without accidentally registering the straight tile.
-        Drag the slider to resize the triangle (0 = off).
-      </p>
-      <div class="setting-slider-row">
-        <input type="range" id="cornerGuardSlider" min="0" max="50" step="1" value="25"
-               oninput="onCornerGuardSlider(this.value)">
-        <span class="setting-slider-val" id="cornerGuardPct">25%</span>
+    <h2>⚙ Settings</h2>
+    <p class="settings-subtitle" id="settingsPausedNote" style="display:none">Game paused while open</p>
+
+    <!-- ── Swipe ──────────────────────────────────────────── -->
+    <div class="setting-section">
+      <div class="setting-section-title">Swipe Accuracy</div>
+      <div class="setting-row">
+        <span class="setting-label">Corner Dead Zone</span>
+        <p class="setting-desc">
+          Blocks a triangular area at each near corner of horizontal/vertical
+          neighbours so your finger can swing through corners to diagonal tiles
+          without mis-registering. Drag to resize (0 = off).
+        </p>
+        <div class="setting-slider-row">
+          <input type="range" id="cornerGuardSlider" min="0" max="50" step="1" value="25"
+                 oninput="onCornerGuardSlider(this.value)">
+          <span class="setting-slider-val" id="cornerGuardPct">25%</span>
+        </div>
       </div>
     </div>
-    <button class="play-btn" onclick="closeSettings()">Done</button>
+
+    <!-- ── Board Fixes ────────────────────────────────────── -->
+    <div class="setting-section">
+      <div class="setting-section-title">Board Fixes</div>
+      <div class="setting-toggle-row">
+        <span class="setting-toggle-label">Q without adjacent U fix</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingFixQU" checked onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-toggle-row">
+        <span class="setting-toggle-label">Replace extra J / X / Z</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingFixJXZ" checked onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-toggle-row">
+        <span class="setting-toggle-label">Reduce excess vowels (&gt; 8)</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingFixVowels" checked onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Board Quality Gate ─────────────────────────────── -->
+    <div class="setting-section">
+      <div class="setting-section-title">Board Quality Gate</div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Min common words on board</span>
+        <input type="number" class="setting-number" id="settingMinWords"
+               min="1" max="500" value="40" onchange="onSettingChange()">
+      </div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Min "top" words needed</span>
+        <input type="number" class="setting-number" id="settingTopCount"
+               min="0" max="20" value="2" onchange="onSettingChange()">
+      </div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Points threshold for top words</span>
+        <input type="number" class="setting-number" id="settingTopPts"
+               min="10" max="500" value="100" onchange="onSettingChange()">
+      </div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Max board search tries</span>
+        <input type="number" class="setting-number" id="settingMaxTries"
+               min="1" max="10000" value="150" onchange="onSettingChange()">
+      </div>
+    </div>
+
+    <!-- ── Game ───────────────────────────────────────────── -->
+    <div class="setting-section">
+      <div class="setting-section-title">Game</div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Time limit (seconds)</span>
+        <input type="number" class="setting-number" id="settingGameTime"
+               min="30" max="600" value="120" onchange="onSettingChange()">
+      </div>
+    </div>
+
+    <button class="play-btn" onclick="closeSettings()" style="width:100%;margin-top:4px">Done</button>
   </div>
 </div>
 
@@ -1053,11 +1178,11 @@ function fixExcessiveVowels() {
   boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
 }
 
-// Run all three fixes in order (uses global `rng`, deterministic per seed).
+// Run enabled fixes in order (uses global `rng`, deterministic per seed).
 function applyBoardFixes() {
-  fixQWithoutU();
-  fixExcessiveHighValueLetters();
-  fixExcessiveVowels();
+  if (settingFixQU)      fixQWithoutU();
+  if (settingFixJXZ)     fixExcessiveHighValueLetters();
+  if (settingFixVowels)  fixExcessiveVowels();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1524,7 +1649,7 @@ function beginGame(seed) {
   selPath     = [];
   gameScore   = 0;
   foundWords  = new Map();
-  timeLeft    = 120;
+  timeLeft    = settingGameTime;
   gameActive  = true;
 
   $('score').textContent     = '0';
@@ -1539,12 +1664,18 @@ function beginGame(seed) {
   findQualityBoard(seed);
 }
 
-// ── Board quality constants ──────────────────────────────
-const QUALITY_MIN_WORDS   = 40;    // min Word10K matches on board
-const QUALITY_MIN_TOP_PTS = 100;   // score threshold for "top" words
-const QUALITY_TOP_COUNT   = 2;     // need at least this many top words
-const QUALITY_MAX_TRIES   = 150;   // default tries per run
-const QUALITY_SEED_STEP   = 1_000_000;
+// ── Board quality constants (let so settings can override) ──
+let QUALITY_MIN_WORDS   = 40;    // min Word10K matches on board
+let QUALITY_MIN_TOP_PTS = 100;   // score threshold for "top" words
+let QUALITY_TOP_COUNT   = 2;     // need at least this many top words
+let QUALITY_MAX_TRIES   = 150;   // default tries per run
+const QUALITY_SEED_STEP = 1_000_000;
+
+// ── User-adjustable settings ─────────────────────────────
+let settingFixQU      = true;   // Q-without-U board fix
+let settingFixJXZ     = true;   // excess J/X/Z board fix
+let settingFixVowels  = true;   // excess vowels board fix
+let settingGameTime   = 120;    // game duration in seconds
 
 // Persistent state so Retry continues exactly where the last run stopped
 let qualityBaseSeed   = 0;   // original seed from the player
@@ -1686,7 +1817,7 @@ let _settingsPaused = false;
 function onCornerGuardSlider(val) {
   cornerGuardFrac = parseInt(val, 10) / 100;
   $('cornerGuardPct').textContent = val + '%';
-  localStorage.setItem('wordswipe_cornerGuard', val);
+  saveSettings();
 }
 
 function openSettings() {
@@ -1694,26 +1825,84 @@ function openSettings() {
   if (gameActive) {
     _settingsPaused = true;
     clearInterval(timerHandle);
+    $('settingsPausedNote').style.display = 'block';
   }
   $('settingsOverlay').classList.remove('hidden');
 }
 
 function closeSettings() {
   $('settingsOverlay').classList.add('hidden');
+  $('settingsPausedNote').style.display = 'none';
   if (_settingsPaused) {
     _settingsPaused = false;
     if (gameActive) startTimer();   // resume where we left off
   }
 }
 
-// Restore saved setting on load
-(function () {
-  const saved = localStorage.getItem('wordswipe_cornerGuard');
-  if (saved !== null) {
-    $('cornerGuardSlider').value    = saved;
-    $('cornerGuardPct').textContent = saved + '%';
-    cornerGuardFrac = parseInt(saved, 10) / 100;
-  }
+// Called whenever any setting control changes — syncs JS vars + persists
+function onSettingChange() {
+  settingFixQU     = $('settingFixQU').checked;
+  settingFixJXZ    = $('settingFixJXZ').checked;
+  settingFixVowels = $('settingFixVowels').checked;
+
+  const minWords = Math.max(1,   parseInt($('settingMinWords').value)  || 40);
+  const topCount = Math.max(0,   parseInt($('settingTopCount').value)  || 2);
+  const topPts   = Math.max(10,  parseInt($('settingTopPts').value)    || 100);
+  const maxTries = Math.max(1,   parseInt($('settingMaxTries').value)  || 150);
+  const gameTime = Math.max(30,  parseInt($('settingGameTime').value)  || 120);
+
+  // Clamp inputs to their stated ranges
+  $('settingMinWords').value = minWords;
+  $('settingTopCount').value = topCount;
+  $('settingTopPts').value   = topPts;
+  $('settingMaxTries').value = maxTries;
+  $('settingGameTime').value = gameTime;
+
+  QUALITY_MIN_WORDS   = minWords;
+  QUALITY_TOP_COUNT   = topCount;
+  QUALITY_MIN_TOP_PTS = topPts;
+  QUALITY_MAX_TRIES   = maxTries;
+  settingGameTime     = gameTime;
+
+  saveSettings();
+}
+
+function saveSettings() {
+  localStorage.setItem('wordswipe_settings', JSON.stringify({
+    cornerGuard: Math.round(cornerGuardFrac * 100),
+    fixQU:       settingFixQU,
+    fixJXZ:      settingFixJXZ,
+    fixVowels:   settingFixVowels,
+    minWords:    QUALITY_MIN_WORDS,
+    topCount:    QUALITY_TOP_COUNT,
+    topPts:      QUALITY_MIN_TOP_PTS,
+    maxTries:    QUALITY_MAX_TRIES,
+    gameTime:    settingGameTime,
+  }));
+}
+
+// Restore all settings from localStorage on page load
+(function loadSettings() {
+  try {
+    const raw = localStorage.getItem('wordswipe_settings');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+
+    if (s.cornerGuard != null) {
+      const cg = s.cornerGuard;
+      $('cornerGuardSlider').value    = cg;
+      $('cornerGuardPct').textContent = cg + '%';
+      cornerGuardFrac = cg / 100;
+    }
+    if (s.fixQU     != null) { settingFixQU     = Boolean(s.fixQU);     $('settingFixQU').checked     = settingFixQU;     }
+    if (s.fixJXZ    != null) { settingFixJXZ    = Boolean(s.fixJXZ);    $('settingFixJXZ').checked    = settingFixJXZ;    }
+    if (s.fixVowels != null) { settingFixVowels = Boolean(s.fixVowels); $('settingFixVowels').checked = settingFixVowels; }
+    if (s.minWords  != null) { QUALITY_MIN_WORDS   = s.minWords;  $('settingMinWords').value = s.minWords;  }
+    if (s.topCount  != null) { QUALITY_TOP_COUNT   = s.topCount;  $('settingTopCount').value = s.topCount;  }
+    if (s.topPts    != null) { QUALITY_MIN_TOP_PTS = s.topPts;    $('settingTopPts').value   = s.topPts;    }
+    if (s.maxTries  != null) { QUALITY_MAX_TRIES   = s.maxTries;  $('settingMaxTries').value = s.maxTries;  }
+    if (s.gameTime  != null) { settingGameTime     = s.gameTime;  $('settingGameTime').value = s.gameTime;  }
+  } catch (_) {}
 })();
 
 // ═══════════════════════════════════════════════════════════
