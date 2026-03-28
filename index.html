@@ -408,6 +408,30 @@
     .quality-card h2      { font-size: 22px; margin-bottom: 12px; }
     .quality-card p       { font-size: 14px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
     .quality-card strong  { color: var(--text); }
+    .quality-retry-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .quality-retry-input {
+      width: 72px;
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      padding: 6px 4px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .quality-retry-input:focus { border-color: var(--accent); }
 
     /* ── Result word tabs ────────────────────────────────── */
     .result-tabs { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -522,13 +546,25 @@
 <div class="overlay hidden" id="qualityOverlay">
   <div class="quality-card">
     <div class="q-icon">⚠️</div>
-    <h2>Sparse Board</h2>
-    <p>This layout only has <strong><span id="qualityCount">0</span> possible words</strong>.</p>
-    <p>Play anyway or pick a different seed?</p>
-    <div class="btn-row" style="margin-top:24px">
+    <h2>No Ideal Board Found</h2>
+    <p>Tried <strong><span id="qualityTriedCount">150</span> seeds</strong> — none reached
+       <strong>200 words</strong> with a <strong>150-point word</strong>.</p>
+    <p style="margin-top:10px">
+      Best board: <strong><span id="qualityWordCount">0</span> words</strong>
+      &nbsp;·&nbsp; top word <strong><span id="qualityTopScore">0</span> pts</strong>
+    </p>
+    <div class="quality-retry-row">
+      <span>Try</span>
+      <input class="quality-retry-input" id="qualityRetryInput"
+             type="number" min="1" max="10000" value="150" inputmode="numeric">
+      <span>more seeds</span>
+      <button class="play-btn" onclick="retryQualitySearch()"
+              style="padding:8px 18px;font-size:14px">Retry</button>
+    </div>
+    <div class="btn-row" style="margin-top:16px">
       <button class="play-btn" onclick="playAnywayFromQuality()">Play Anyway</button>
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
-              onclick="newBoardFromQuality()">New Board</button>
+              onclick="newBoardFromQuality()">New Seed</button>
     </div>
   </div>
 </div>
@@ -1196,7 +1232,6 @@ function newGame() {
 
 function beginGame(seed) {
   currentSeed = seed;
-  rng         = makePRNG(seed);
   selPath     = [];
   gameScore   = 0;
   foundWords  = new Map();
@@ -1211,19 +1246,64 @@ function beginGame(seed) {
   $('seedOverlay').classList.add('hidden');
   updateTimerDisplay();
 
-  generateBoard();
-  allPossibleWords = findAllWords();
+  findQualityBoard(seed);
+}
 
-  if (allPossibleWords.size < 30) {
-    // Board quality gate — ask the player before starting
-    $('qualityCount').textContent = allPossibleWords.size;
-    $('qualityOverlay').classList.remove('hidden');
-    return;   // timer not started yet; handlers below resume or restart
+// ── Board quality constants ──────────────────────────────
+const QUALITY_MIN_WORDS   = 200;
+const QUALITY_MIN_TOP_PTS = 150;
+const QUALITY_MAX_TRIES   = 150;   // default tries per run
+const QUALITY_SEED_STEP   = 1_000_000;
+
+// Persistent state so Retry continues exactly where the last run stopped
+let qualityBaseSeed   = 0;   // original seed from the player
+let qualityTotalTried = 0;   // cumulative attempts across all runs
+
+function boardMeetsQuality(words) {
+  if (words.size < QUALITY_MIN_WORDS) return false;
+  return [...words.values()].some(pts => pts >= QUALITY_MIN_TOP_PTS);
+}
+
+// findQualityBoard(baseSeed, startAttempt, maxTries)
+//   baseSeed     – the player's chosen seed; every trial offsets from here
+//   startAttempt – resume point (0 for fresh start, non-zero after Retry)
+//   maxTries     – how many seeds to check in this run
+// Launches the game on first qualifying board; shows overlay if all fail.
+function findQualityBoard(baseSeed, startAttempt = 0, maxTries = QUALITY_MAX_TRIES) {
+  qualityBaseSeed = baseSeed;
+
+  for (let attempt = startAttempt; attempt < startAttempt + maxTries; attempt++) {
+    const trySeed = baseSeed + attempt * QUALITY_SEED_STEP;
+    currentSeed      = trySeed;
+    rng              = makePRNG(trySeed);
+    generateBoard();
+    allPossibleWords = findAllWords();
+
+    if (boardMeetsQuality(allPossibleWords)) {
+      renderBoard();
+      playSound('game_start');
+      startTimer();
+      return;
+    }
   }
 
-  renderBoard();
-  playSound('game_start');
-  startTimer();
+  // All attempts in this run exhausted — record cumulative total, show overlay
+  qualityTotalTried = startAttempt + maxTries;
+  const topScore = allPossibleWords.size > 0
+    ? Math.max(...allPossibleWords.values())
+    : 0;
+  $('qualityTriedCount').textContent = qualityTotalTried;
+  $('qualityWordCount').textContent  = allPossibleWords.size;
+  $('qualityTopScore').textContent   = topScore;
+  $('qualityRetryInput').value       = QUALITY_MAX_TRIES;  // reset input default
+  $('qualityOverlay').classList.remove('hidden');
+}
+
+// Continue searching from where the last run stopped
+function retryQualitySearch() {
+  const moreTries = Math.max(1, parseInt($('qualityRetryInput').value) || QUALITY_MAX_TRIES);
+  $('qualityOverlay').classList.add('hidden');
+  findQualityBoard(qualityBaseSeed, qualityTotalTried, moreTries);
 }
 
 function playAnywayFromQuality() {
