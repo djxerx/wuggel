@@ -596,7 +596,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.42</span>
+      <span class="version-label">v0.43</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -756,29 +756,11 @@
       </div>
     </div>
 
-    <!-- ── Board Quality Gate ─────────────────────────────── -->
+    <!-- ── Board Quality Gate (sub-modal) ───────────────────── -->
     <div class="setting-section">
-      <div class="setting-section-title">Board Quality Gate</div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Min common words on board</span>
-        <input type="number" class="setting-number" id="settingMinWords"
-               min="1" max="500" value="40" onchange="onSettingChange()">
-      </div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Min "top" words needed</span>
-        <input type="number" class="setting-number" id="settingTopCount"
-               min="0" max="20" value="2" onchange="onSettingChange()">
-      </div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Points threshold for top words</span>
-        <input type="number" class="setting-number" id="settingTopPts"
-               min="10" max="500" value="100" onchange="onSettingChange()">
-      </div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Max board search tries</span>
-        <input type="number" class="setting-number" id="settingMaxTries"
-               min="1" max="10000" value="1000" onchange="onSettingChange()">
-      </div>
+      <button class="play-btn" onclick="openBoardGate()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+        ⚙ Qualified Board
+      </button>
     </div>
 
     <!-- ── Game ───────────────────────────────────────────── -->
@@ -1742,19 +1724,35 @@ let settingFixQU          = true;   // Q-without-U board fix
 let settingFixJXZ         = true;   // excess J/X/Z board fix
 let settingFixVowels      = true;   // excess vowels board fix
 let settingFixDupeLetter  = true;   // excess same-letter board fix
-let settingGameTime   = 120;    // game duration in seconds
-let settingColorCorrect = true; // show green tiles when word is valid
+let settingGameTime       = 120;    // game duration in seconds
+let settingColorCorrect   = true;   // show green tiles when word is valid
+
+// Full word-list quality gate options
+let QUALITY_FULL_MIN_ENABLED = true;   // toggle: check min words on full list
+let QUALITY_FULL_MIN_WORDS   = 100;    // min words from full list
+let QUALITY_FULL_TOP_ENABLED = true;   // toggle: check high-score words on full list
+let QUALITY_FULL_TOP_COUNT   = 2;      // count of full-list words that must exceed threshold
+let QUALITY_FULL_TOP_PTS     = 150;    // points threshold for full-list top words
 
 // Persistent state so Retry continues exactly where the last run stopped
 let qualityBaseSeed   = 0;   // original seed from the player
 let qualityTotalTried = 0;   // cumulative attempts across all runs
 
 function boardMeetsQuality(words) {
-  // Filter the full word map down to only Word10K entries
+  // ── Common word list (Word10K) checks ──
   const qualWords = new Map([...words.entries()].filter(([w]) => WORD10K.has(w)));
   if (qualWords.size < QUALITY_MIN_WORDS) return false;
-  const topCount = [...qualWords.values()].filter(pts => pts >= QUALITY_MIN_TOP_PTS).length;
-  return topCount >= QUALITY_TOP_COUNT;
+  const topQual = [...qualWords.values()].filter(pts => pts >= QUALITY_MIN_TOP_PTS).length;
+  if (topQual < QUALITY_TOP_COUNT) return false;
+
+  // ── Full word list checks (optional toggles) ──
+  if (QUALITY_FULL_MIN_ENABLED && words.size < QUALITY_FULL_MIN_WORDS) return false;
+  if (QUALITY_FULL_TOP_ENABLED) {
+    const topFull = [...words.values()].filter(pts => pts >= QUALITY_FULL_TOP_PTS).length;
+    if (topFull < QUALITY_FULL_TOP_COUNT) return false;
+  }
+
+  return true;
 }
 
 // findQualityBoard(baseSeed, startAttempt, maxTries)
@@ -1907,6 +1905,47 @@ function closeSettings() {
   }
 }
 
+function openBoardGate() {
+  $('settingsModal').classList.add('hidden');
+  $('boardGateModal').classList.remove('hidden');
+}
+
+function closeBoardGate() {
+  $('boardGateModal').classList.add('hidden');
+  $('settingsModal').classList.remove('hidden');
+}
+
+// Syncs board-gate inputs → JS vars → persists
+function onBoardGateChange() {
+  const minWords  = Math.max(1,  parseInt($('settingMinWords').value)       || 40);
+  const topCount  = Math.max(0,  parseInt($('settingTopCount').value)       || 2);
+  const topPts    = Math.max(10, parseInt($('settingTopPts').value)         || 100);
+  const maxTries  = Math.max(1,  parseInt($('settingMaxTries').value)       || 1000);
+  const fullMin   = Math.max(1,  parseInt($('settingFullMinWords').value)   || 100);
+  const fullTopCt = Math.max(0,  parseInt($('settingFullTopCount').value)   || 2);
+  const fullTopPt = Math.max(10, parseInt($('settingFullTopPts').value)     || 150);
+
+  $('settingMinWords').value     = minWords;
+  $('settingTopCount').value     = topCount;
+  $('settingTopPts').value       = topPts;
+  $('settingMaxTries').value     = maxTries;
+  $('settingFullMinWords').value = fullMin;
+  $('settingFullTopCount').value = fullTopCt;
+  $('settingFullTopPts').value   = fullTopPt;
+
+  QUALITY_MIN_WORDS        = minWords;
+  QUALITY_TOP_COUNT        = topCount;
+  QUALITY_MIN_TOP_PTS      = topPts;
+  QUALITY_MAX_TRIES        = maxTries;
+  QUALITY_FULL_MIN_ENABLED = $('settingFullMinEnabled').checked;
+  QUALITY_FULL_MIN_WORDS   = fullMin;
+  QUALITY_FULL_TOP_ENABLED = $('settingFullTopEnabled').checked;
+  QUALITY_FULL_TOP_COUNT   = fullTopCt;
+  QUALITY_FULL_TOP_PTS     = fullTopPt;
+
+  saveSettings();
+}
+
 // Called whenever any setting control changes — syncs JS vars + persists
 function onSettingChange() {
   settingFixQU          = $('settingFixQU').checked;
@@ -1915,23 +1954,8 @@ function onSettingChange() {
   settingFixDupeLetter  = $('settingFixDupeLetter').checked;
   settingColorCorrect = $('settingColorCorrect').checked;
 
-  const minWords = Math.max(1,   parseInt($('settingMinWords').value)  || 40);
-  const topCount = Math.max(0,   parseInt($('settingTopCount').value)  || 2);
-  const topPts   = Math.max(10,  parseInt($('settingTopPts').value)    || 100);
-  const maxTries = Math.max(1,   parseInt($('settingMaxTries').value)  || 1000);
   const gameTime = Math.max(30,  parseInt($('settingGameTime').value)  || 120);
-
-  // Clamp inputs to their stated ranges
-  $('settingMinWords').value = minWords;
-  $('settingTopCount').value = topCount;
-  $('settingTopPts').value   = topPts;
-  $('settingMaxTries').value = maxTries;
   $('settingGameTime').value = gameTime;
-
-  QUALITY_MIN_WORDS   = minWords;
-  QUALITY_TOP_COUNT   = topCount;
-  QUALITY_MIN_TOP_PTS = topPts;
-  QUALITY_MAX_TRIES   = maxTries;
   settingGameTime     = gameTime;
 
   saveSettings();
@@ -1940,16 +1964,21 @@ function onSettingChange() {
 function saveSettings() {
   localStorage.setItem('wordswipe_settings', JSON.stringify({
     cornerGuard:   Math.round(cornerGuardFrac * 100),
-    fixQU:         settingFixQU,
-    fixJXZ:        settingFixJXZ,
-    fixVowels:     settingFixVowels,
-    fixDupeLetter: settingFixDupeLetter,
-    minWords:      QUALITY_MIN_WORDS,
-    topCount:      QUALITY_TOP_COUNT,
-    topPts:        QUALITY_MIN_TOP_PTS,
-    maxTries:      QUALITY_MAX_TRIES,
-    gameTime:      settingGameTime,
-    colorCorrect:  settingColorCorrect,
+    fixQU:              settingFixQU,
+    fixJXZ:             settingFixJXZ,
+    fixVowels:          settingFixVowels,
+    fixDupeLetter:      settingFixDupeLetter,
+    minWords:           QUALITY_MIN_WORDS,
+    topCount:           QUALITY_TOP_COUNT,
+    topPts:             QUALITY_MIN_TOP_PTS,
+    maxTries:           QUALITY_MAX_TRIES,
+    gameTime:           settingGameTime,
+    colorCorrect:       settingColorCorrect,
+    fullMinEnabled:     QUALITY_FULL_MIN_ENABLED,
+    fullMinWords:       QUALITY_FULL_MIN_WORDS,
+    fullTopEnabled:     QUALITY_FULL_TOP_ENABLED,
+    fullTopCount:       QUALITY_FULL_TOP_COUNT,
+    fullTopPts:         QUALITY_FULL_TOP_PTS,
   }));
 }
 
@@ -1973,9 +2002,14 @@ function saveSettings() {
     if (s.minWords  != null) { QUALITY_MIN_WORDS   = s.minWords;  $('settingMinWords').value = s.minWords;  }
     if (s.topCount  != null) { QUALITY_TOP_COUNT   = s.topCount;  $('settingTopCount').value = s.topCount;  }
     if (s.topPts    != null) { QUALITY_MIN_TOP_PTS = s.topPts;    $('settingTopPts').value   = s.topPts;    }
-    if (s.maxTries     != null) { QUALITY_MAX_TRIES    = s.maxTries;      $('settingMaxTries').value        = s.maxTries;      }
-    if (s.gameTime     != null) { settingGameTime      = s.gameTime;      $('settingGameTime').value        = s.gameTime;      }
-    if (s.colorCorrect != null) { settingColorCorrect  = Boolean(s.colorCorrect); $('settingColorCorrect').checked = settingColorCorrect; }
+    if (s.maxTries      != null) { QUALITY_MAX_TRIES        = s.maxTries;      $('settingMaxTries').value             = s.maxTries;      }
+    if (s.gameTime      != null) { settingGameTime           = s.gameTime;      $('settingGameTime').value             = s.gameTime;      }
+    if (s.colorCorrect  != null) { settingColorCorrect       = Boolean(s.colorCorrect);  $('settingColorCorrect').checked       = settingColorCorrect;       }
+    if (s.fullMinEnabled != null) { QUALITY_FULL_MIN_ENABLED = Boolean(s.fullMinEnabled); $('settingFullMinEnabled').checked    = QUALITY_FULL_MIN_ENABLED;  }
+    if (s.fullMinWords  != null) { QUALITY_FULL_MIN_WORDS    = s.fullMinWords;  $('settingFullMinWords').value         = s.fullMinWords;  }
+    if (s.fullTopEnabled != null) { QUALITY_FULL_TOP_ENABLED = Boolean(s.fullTopEnabled); $('settingFullTopEnabled').checked   = QUALITY_FULL_TOP_ENABLED;  }
+    if (s.fullTopCount  != null) { QUALITY_FULL_TOP_COUNT    = s.fullTopCount;  $('settingFullTopCount').value         = s.fullTopCount;  }
+    if (s.fullTopPts    != null) { QUALITY_FULL_TOP_PTS      = s.fullTopPts;    $('settingFullTopPts').value           = s.fullTopPts;    }
   } catch (_) {}
 })();
 
@@ -1988,5 +2022,79 @@ Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
   showSeedOverlay();
 });
 </script>
+  <!-- ══════════════════════════════════════════════════════════
+       BOARD GATE SUB-MODAL
+       ══════════════════════════════════════════════════════════ -->
+  <div id="boardGateModal" class="overlay hidden">
+    <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+      <h2 style="text-align:center;margin-bottom:14px">⚙ Qualified Board</h2>
+
+      <!-- ── Common Word List (Word10K) ── -->
+      <div class="setting-section">
+        <div class="setting-section-title">Common Word List</div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Min common words on board</span>
+          <input type="number" class="setting-number" id="settingMinWords"
+                 min="1" max="500" value="40" onchange="onBoardGateChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Min high-score common words</span>
+          <input type="number" class="setting-number" id="settingTopCount"
+                 min="0" max="20" value="2" onchange="onBoardGateChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Points threshold (common list)</span>
+          <input type="number" class="setting-number" id="settingTopPts"
+                 min="10" max="500" value="100" onchange="onBoardGateChange()">
+        </div>
+      </div>
+
+      <!-- ── Full Word List ── -->
+      <div class="setting-section">
+        <div class="setting-section-title">Full Word List</div>
+        <div class="setting-toggle-row">
+          <span class="setting-toggle-label">Min full-list words</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settingFullMinEnabled" checked onchange="onBoardGateChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Min words (full list)</span>
+          <input type="number" class="setting-number" id="settingFullMinWords"
+                 min="1" max="5000" value="100" onchange="onBoardGateChange()">
+        </div>
+        <div class="setting-toggle-row">
+          <span class="setting-toggle-label">Min full-list high-score words</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settingFullTopEnabled" checked onchange="onBoardGateChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Count of high-score words</span>
+          <input type="number" class="setting-number" id="settingFullTopCount"
+                 min="0" max="50" value="2" onchange="onBoardGateChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Points threshold (full list)</span>
+          <input type="number" class="setting-number" id="settingFullTopPts"
+                 min="10" max="1000" value="150" onchange="onBoardGateChange()">
+        </div>
+      </div>
+
+      <!-- ── General ── -->
+      <div class="setting-section">
+        <div class="setting-section-title">General</div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Max board search tries</span>
+          <input type="number" class="setting-number" id="settingMaxTries"
+                 min="1" max="10000" value="1000" onchange="onBoardGateChange()">
+        </div>
+      </div>
+
+      <button class="play-btn" onclick="closeBoardGate()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
 </body>
 </html>
