@@ -821,24 +821,35 @@ const SOUND_FILES = {
   highscore:  'sounds/highscore.wav',  // new high score achieved
 };
 
-const SOUNDS = {};
+const SOUND_POOLS = {};     // name → Audio[]  (3 pre-loaded instances each)
+const SOUND_POOL_IDX = {};  // name → next index to use
 
 function loadSounds() {
+  const POOL_SIZE = 3;
   for (const [name, path] of Object.entries(SOUND_FILES)) {
-    const audio = new Audio();
-    audio.addEventListener('error', () => { delete SOUNDS[name]; }, { once: true });
-    audio.src     = path;
-    audio.preload = 'auto';
-    SOUNDS[name]  = audio;
+    const pool = [];
+    for (let i = 0; i < POOL_SIZE; i++) {
+      const audio = new Audio();
+      // If the first instance errors the file is missing — remove the whole pool
+      if (i === 0) audio.addEventListener('error', () => { delete SOUND_POOLS[name]; }, { once: true });
+      audio.src     = path;
+      audio.preload = 'auto';
+      pool.push(audio);
+    }
+    SOUND_POOLS[name]   = pool;
+    SOUND_POOL_IDX[name] = 0;
   }
 }
 
 function playSound(name) {
-  const a = SOUNDS[name];
-  if (!a) return;
+  const pool = SOUND_POOLS[name];
+  if (!pool) return;                              // missing / failed to load
   try {
-    const clone = a.cloneNode();   // fresh instance — lets the same sound overlap itself
-    clone.play().catch(() => {});
+    const idx = SOUND_POOL_IDX[name];
+    SOUND_POOL_IDX[name] = (idx + 1) % pool.length;
+    const a = pool[idx];
+    a.currentTime = 0;                            // rewind this slot to start
+    a.play().catch(() => {});
   } catch (_) {}
 }
 
