@@ -596,7 +596,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.41</span>
+      <span class="version-label">v0.42</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -747,6 +747,13 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+      <div class="setting-toggle-row">
+        <span class="setting-toggle-label">Replace excess same letter (&gt; 4)</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingFixDupeLetter" checked onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <!-- ── Board Quality Gate ─────────────────────────────── -->
@@ -770,7 +777,7 @@
       <div class="setting-number-row">
         <span class="setting-number-label">Max board search tries</span>
         <input type="number" class="setting-number" id="settingMaxTries"
-               min="1" max="10000" value="150" onchange="onSettingChange()">
+               min="1" max="10000" value="1000" onchange="onSettingChange()">
       </div>
     </div>
 
@@ -821,35 +828,41 @@ const SOUND_FILES = {
   highscore:  'sounds/highscore.wav',  // new high score achieved
 };
 
-const SOUND_POOLS = {};     // name → Audio[]  (3 pre-loaded instances each)
-const SOUND_POOL_IDX = {};  // name → next index to use
+// ── Web Audio API — zero-latency playback ────────────────
+// Each file is fetched once at startup and decoded into a raw
+// PCM AudioBuffer.  playSound() simply schedules a buffer read,
+// which fires with near-zero latency and allows full overlap.
+const AUDIO_CTX     = new (window.AudioContext || window.webkitAudioContext)();
+const AUDIO_BUFFERS = {};
 
-function loadSounds() {
-  const POOL_SIZE = 3;
+// iOS Safari suspends AudioContext until a user gesture.
+// Resume it on the very first touch/click anywhere on the page.
+['touchstart', 'pointerdown', 'click'].forEach(evt =>
+  document.addEventListener(evt, () => {
+    if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume();
+  }, { once: true })
+);
+
+async function loadSounds() {
   for (const [name, path] of Object.entries(SOUND_FILES)) {
-    const pool = [];
-    for (let i = 0; i < POOL_SIZE; i++) {
-      const audio = new Audio();
-      // If the first instance errors the file is missing — remove the whole pool
-      if (i === 0) audio.addEventListener('error', () => { delete SOUND_POOLS[name]; }, { once: true });
-      audio.src     = path;
-      audio.preload = 'auto';
-      pool.push(audio);
-    }
-    SOUND_POOLS[name]   = pool;
-    SOUND_POOL_IDX[name] = 0;
+    try {
+      const res = await fetch(path);
+      if (!res.ok) continue;
+      const arr = await res.arrayBuffer();
+      AUDIO_BUFFERS[name] = await AUDIO_CTX.decodeAudioData(arr);
+    } catch (_) {}   // missing file or decode error — silently skip
   }
 }
 
 function playSound(name) {
-  const pool = SOUND_POOLS[name];
-  if (!pool) return;                              // missing / failed to load
+  const buf = AUDIO_BUFFERS[name];
+  if (!buf) return;
   try {
-    const idx = SOUND_POOL_IDX[name];
-    SOUND_POOL_IDX[name] = (idx + 1) % pool.length;
-    const a = pool[idx];
-    a.currentTime = 0;                            // rewind this slot to start
-    a.play().catch(() => {});
+    if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume();
+    const src = AUDIO_CTX.createBufferSource();
+    src.buffer = buf;
+    src.connect(AUDIO_CTX.destination);
+    src.start(0);   // fires immediately — no decode overhead at play time
   } catch (_) {}
 }
 
@@ -1206,11 +1219,32 @@ function fixExcessiveVowels() {
   boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
 }
 
+// Fix 4 — More than 4 of the same letter.
+// For each over-represented letter, replace one random tile of that letter
+// with a different random letter that has the same point value.
+function fixExcessiveDuplicateLetters() {
+  const counts = {};
+  for (const cell of boardData) counts[cell.letter] = (counts[cell.letter] || 0) + 1;
+  for (const [letter, count] of Object.entries(counts)) {
+    if (count <= 4) continue;
+    const idx   = boardData.reduce((a, c, i) => { if (c.letter === letter) a.push(i); return a; }, []);
+    const ti    = idx[Math.floor(rng() * idx.length)];
+    const score = LETTER_CONFIG[letter].s;
+    const cands = Object.entries(LETTER_CONFIG)
+      .filter(([l, c]) => c.s === score && l !== letter)
+      .map(([l]) => l);
+    if (!cands.length) continue;
+    const nl = cands[Math.floor(rng() * cands.length)];
+    boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
+  }
+}
+
 // Run enabled fixes in order (uses global `rng`, deterministic per seed).
 function applyBoardFixes() {
-  if (settingFixQU)      fixQWithoutU();
-  if (settingFixJXZ)     fixExcessiveHighValueLetters();
-  if (settingFixVowels)  fixExcessiveVowels();
+  if (settingFixQU)         fixQWithoutU();
+  if (settingFixJXZ)        fixExcessiveHighValueLetters();
+  if (settingFixVowels)     fixExcessiveVowels();
+  if (settingFixDupeLetter) fixExcessiveDuplicateLetters();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1700,13 +1734,14 @@ function beginGame(seed) {
 let QUALITY_MIN_WORDS   = 40;    // min Word10K matches on board
 let QUALITY_MIN_TOP_PTS = 100;   // score threshold for "top" words
 let QUALITY_TOP_COUNT   = 2;     // need at least this many top words
-let QUALITY_MAX_TRIES   = 150;   // default tries per run
+let QUALITY_MAX_TRIES   = 1000;  // default tries per run
 const QUALITY_SEED_STEP = 1_000_000;
 
 // ── User-adjustable settings ─────────────────────────────
-let settingFixQU      = true;   // Q-without-U board fix
-let settingFixJXZ     = true;   // excess J/X/Z board fix
-let settingFixVowels  = true;   // excess vowels board fix
+let settingFixQU          = true;   // Q-without-U board fix
+let settingFixJXZ         = true;   // excess J/X/Z board fix
+let settingFixVowels      = true;   // excess vowels board fix
+let settingFixDupeLetter  = true;   // excess same-letter board fix
 let settingGameTime   = 120;    // game duration in seconds
 let settingColorCorrect = true; // show green tiles when word is valid
 
@@ -1874,15 +1909,16 @@ function closeSettings() {
 
 // Called whenever any setting control changes — syncs JS vars + persists
 function onSettingChange() {
-  settingFixQU       = $('settingFixQU').checked;
-  settingFixJXZ      = $('settingFixJXZ').checked;
-  settingFixVowels   = $('settingFixVowels').checked;
+  settingFixQU          = $('settingFixQU').checked;
+  settingFixJXZ         = $('settingFixJXZ').checked;
+  settingFixVowels      = $('settingFixVowels').checked;
+  settingFixDupeLetter  = $('settingFixDupeLetter').checked;
   settingColorCorrect = $('settingColorCorrect').checked;
 
   const minWords = Math.max(1,   parseInt($('settingMinWords').value)  || 40);
   const topCount = Math.max(0,   parseInt($('settingTopCount').value)  || 2);
   const topPts   = Math.max(10,  parseInt($('settingTopPts').value)    || 100);
-  const maxTries = Math.max(1,   parseInt($('settingMaxTries').value)  || 150);
+  const maxTries = Math.max(1,   parseInt($('settingMaxTries').value)  || 1000);
   const gameTime = Math.max(30,  parseInt($('settingGameTime').value)  || 120);
 
   // Clamp inputs to their stated ranges
@@ -1907,6 +1943,7 @@ function saveSettings() {
     fixQU:         settingFixQU,
     fixJXZ:        settingFixJXZ,
     fixVowels:     settingFixVowels,
+    fixDupeLetter: settingFixDupeLetter,
     minWords:      QUALITY_MIN_WORDS,
     topCount:      QUALITY_TOP_COUNT,
     topPts:        QUALITY_MIN_TOP_PTS,
@@ -1929,9 +1966,10 @@ function saveSettings() {
       $('cornerGuardPct').textContent = cg + '%';
       cornerGuardFrac = cg / 100;
     }
-    if (s.fixQU     != null) { settingFixQU     = Boolean(s.fixQU);     $('settingFixQU').checked     = settingFixQU;     }
-    if (s.fixJXZ    != null) { settingFixJXZ    = Boolean(s.fixJXZ);    $('settingFixJXZ').checked    = settingFixJXZ;    }
-    if (s.fixVowels != null) { settingFixVowels = Boolean(s.fixVowels); $('settingFixVowels').checked = settingFixVowels; }
+    if (s.fixQU         != null) { settingFixQU         = Boolean(s.fixQU);         $('settingFixQU').checked         = settingFixQU;         }
+    if (s.fixJXZ        != null) { settingFixJXZ        = Boolean(s.fixJXZ);        $('settingFixJXZ').checked        = settingFixJXZ;        }
+    if (s.fixVowels     != null) { settingFixVowels     = Boolean(s.fixVowels);     $('settingFixVowels').checked     = settingFixVowels;     }
+    if (s.fixDupeLetter != null) { settingFixDupeLetter = Boolean(s.fixDupeLetter); $('settingFixDupeLetter').checked = settingFixDupeLetter; }
     if (s.minWords  != null) { QUALITY_MIN_WORDS   = s.minWords;  $('settingMinWords').value = s.minWords;  }
     if (s.topCount  != null) { QUALITY_TOP_COUNT   = s.topCount;  $('settingTopCount').value = s.topCount;  }
     if (s.topPts    != null) { QUALITY_MIN_TOP_PTS = s.topPts;    $('settingTopPts').value   = s.topPts;    }
