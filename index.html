@@ -596,7 +596,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.4</span>
+      <span class="version-label">v0.41</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -782,6 +782,20 @@
         <input type="number" class="setting-number" id="settingGameTime"
                min="30" max="600" value="120" onchange="onSettingChange()">
       </div>
+      <div class="setting-toggle-row">
+        <div>
+          <span class="setting-toggle-label">Color Correct</span>
+          <p class="setting-desc" style="margin:2px 0 0">
+            When on, tiles turn green while you're tracing a valid word.
+            Turn off to keep all tiles orange — you won't know if the
+            word is valid until you lift your finger.
+          </p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingColorCorrect" checked onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <button class="play-btn" onclick="closeSettings()" style="width:100%;margin-top:4px">Done</button>
@@ -822,7 +836,10 @@ function loadSounds() {
 function playSound(name) {
   const a = SOUNDS[name];
   if (!a) return;
-  try { a.currentTime = 0; a.play().catch(() => {}); } catch (_) {}
+  try {
+    const clone = a.cloneNode();   // fresh instance — lets the same sound overlap itself
+    clone.play().catch(() => {});
+  } catch (_) {}
 }
 
 // Tiered tick — pitch escalates as the word gets longer
@@ -1361,11 +1378,15 @@ function updateTileStyles() {
   const isValid = word.length >= 2 && WORDS.has(word) &&
     (!foundWords.has(word) || calcWordScore(selPath) > foundWords.get(word));
 
+  // When Color Correct is off, always show the neutral "selected" style
+  // so the player can't tell whether a word is valid mid-swipe.
+  const showValid = isValid && settingColorCorrect;
+
   tiles.forEach((t, i) => {
     t.classList.remove('selected', 'valid-word');
-    if (selPath.includes(i)) t.classList.add(isValid ? 'valid-word' : 'selected');
+    if (selPath.includes(i)) t.classList.add(showValid ? 'valid-word' : 'selected');
   });
-  drawPath(isValid);
+  drawPath(showValid);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1676,6 +1697,7 @@ let settingFixQU      = true;   // Q-without-U board fix
 let settingFixJXZ     = true;   // excess J/X/Z board fix
 let settingFixVowels  = true;   // excess vowels board fix
 let settingGameTime   = 120;    // game duration in seconds
+let settingColorCorrect = true; // show green tiles when word is valid
 
 // Persistent state so Retry continues exactly where the last run stopped
 let qualityBaseSeed   = 0;   // original seed from the player
@@ -1841,9 +1863,10 @@ function closeSettings() {
 
 // Called whenever any setting control changes — syncs JS vars + persists
 function onSettingChange() {
-  settingFixQU     = $('settingFixQU').checked;
-  settingFixJXZ    = $('settingFixJXZ').checked;
-  settingFixVowels = $('settingFixVowels').checked;
+  settingFixQU       = $('settingFixQU').checked;
+  settingFixJXZ      = $('settingFixJXZ').checked;
+  settingFixVowels   = $('settingFixVowels').checked;
+  settingColorCorrect = $('settingColorCorrect').checked;
 
   const minWords = Math.max(1,   parseInt($('settingMinWords').value)  || 40);
   const topCount = Math.max(0,   parseInt($('settingTopCount').value)  || 2);
@@ -1869,15 +1892,16 @@ function onSettingChange() {
 
 function saveSettings() {
   localStorage.setItem('wordswipe_settings', JSON.stringify({
-    cornerGuard: Math.round(cornerGuardFrac * 100),
-    fixQU:       settingFixQU,
-    fixJXZ:      settingFixJXZ,
-    fixVowels:   settingFixVowels,
-    minWords:    QUALITY_MIN_WORDS,
-    topCount:    QUALITY_TOP_COUNT,
-    topPts:      QUALITY_MIN_TOP_PTS,
-    maxTries:    QUALITY_MAX_TRIES,
-    gameTime:    settingGameTime,
+    cornerGuard:   Math.round(cornerGuardFrac * 100),
+    fixQU:         settingFixQU,
+    fixJXZ:        settingFixJXZ,
+    fixVowels:     settingFixVowels,
+    minWords:      QUALITY_MIN_WORDS,
+    topCount:      QUALITY_TOP_COUNT,
+    topPts:        QUALITY_MIN_TOP_PTS,
+    maxTries:      QUALITY_MAX_TRIES,
+    gameTime:      settingGameTime,
+    colorCorrect:  settingColorCorrect,
   }));
 }
 
@@ -1900,8 +1924,9 @@ function saveSettings() {
     if (s.minWords  != null) { QUALITY_MIN_WORDS   = s.minWords;  $('settingMinWords').value = s.minWords;  }
     if (s.topCount  != null) { QUALITY_TOP_COUNT   = s.topCount;  $('settingTopCount').value = s.topCount;  }
     if (s.topPts    != null) { QUALITY_MIN_TOP_PTS = s.topPts;    $('settingTopPts').value   = s.topPts;    }
-    if (s.maxTries  != null) { QUALITY_MAX_TRIES   = s.maxTries;  $('settingMaxTries').value = s.maxTries;  }
-    if (s.gameTime  != null) { settingGameTime     = s.gameTime;  $('settingGameTime').value = s.gameTime;  }
+    if (s.maxTries     != null) { QUALITY_MAX_TRIES    = s.maxTries;      $('settingMaxTries').value        = s.maxTries;      }
+    if (s.gameTime     != null) { settingGameTime      = s.gameTime;      $('settingGameTime').value        = s.gameTime;      }
+    if (s.colorCorrect != null) { settingColorCorrect  = Boolean(s.colorCorrect); $('settingColorCorrect').checked = settingColorCorrect; }
   } catch (_) {}
 })();
 
