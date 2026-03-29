@@ -596,7 +596,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.43</span>
+      <span class="version-label">v0.5</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1906,13 +1906,13 @@ function closeSettings() {
 }
 
 function openBoardGate() {
-  $('settingsModal').classList.add('hidden');
+  $('settingsOverlay').classList.add('hidden');
   $('boardGateModal').classList.remove('hidden');
 }
 
 function closeBoardGate() {
   $('boardGateModal').classList.add('hidden');
-  $('settingsModal').classList.remove('hidden');
+  $('settingsOverlay').classList.remove('hidden');
 }
 
 // Syncs board-gate inputs → JS vars → persists
