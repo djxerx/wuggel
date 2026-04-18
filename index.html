@@ -666,7 +666,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.6</span>
+      <span class="version-label">v0.61</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1213,7 +1213,7 @@ function generateBoard() {
       mults[positions[pos++]] = { type, label, css };
     }
   }
-  const RARE_LETTERS = new Set(['Q', 'X', 'Y']);
+  const RARE_LETTERS = new Set(['Q', 'X', 'Y', 'Z']);
   let rarePlaced = false;
   boardData = Array.from({ length: 16 }, (_, i) => {
     const l = weightedLetter(rarePlaced ? RARE_LETTERS : null);
