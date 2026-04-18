@@ -259,9 +259,9 @@
       background: var(--panel);
       border: 1px solid #374151;
       border-radius: 24px;
-      padding: 36px 32px;
+      padding: 28px 24px;
       text-align: center;
-      width: min(340px, 90vw);
+      width: min(660px, 95vw);
       animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     @keyframes pop-in {
@@ -272,12 +272,70 @@
     .result-card h2    { font-size: 22px; color: var(--muted); margin-bottom: 4px; }
     .result-final      { font-size: 72px; font-weight: 900; color: var(--accent); line-height: 1; }
     .result-label      { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-    .result-stats      { font-size: 15px; color: var(--muted); margin-bottom: 24px; }
+    .result-stats      { font-size: 15px; color: var(--muted); margin-bottom: 14px; }
+
+    /* ── Result body: side-by-side layout ───────────────── */
+    .result-body {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .result-left { flex: 1; min-width: 0; }
+    .result-right {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .result-right-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .result-mini-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3px;
+      padding: 6px;
+      background: #111827;
+      border-radius: 10px;
+      border: 1px solid #374151;
+    }
+    .result-mini-tile {
+      width: 34px;
+      aspect-ratio: 1;
+      background: #1f2937;
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text);
+      position: relative;
+      transition: background 0.15s, color 0.15s;
+      line-height: 1.1;
+    }
+    .result-mini-tile .rmt-pts  { font-size: 7px; font-weight: 600; color: var(--muted); line-height: 1; }
+    .result-mini-tile .rmt-mult { position: absolute; top: 1px; right: 2px; font-size: 5px; font-weight: 700; text-transform: uppercase; }
+    .result-mini-tile.rmt-dl { background: #1e3a5f; }
+    .result-mini-tile.rmt-tl { background: #1a3a2a; }
+    .result-mini-tile.rmt-dw { background: #3d2012; }
+    .result-mini-tile.rmt-tw { background: #3d1212; }
+    .result-mini-tile.rmt-active { background: var(--accent) !important; color: #fff; }
+    .result-mini-tile.rmt-active .rmt-pts { color: rgba(255,255,255,0.7); }
+    .result-mini-tile.rmt-active .rmt-mult { color: rgba(255,255,255,0.7); }
+    .result-mini-tile.rmt-first { background: #c2410c !important; color: #fff; }
 
     .result-word-list {
-      max-height: 180px;
+      max-height: 220px;
       overflow-y: auto;
-      margin-bottom: 20px;
+      margin-bottom: 0;
       text-align: left;
       scrollbar-width: thin;
       scrollbar-color: #374151 transparent;
@@ -289,9 +347,21 @@
       border-bottom: 1px solid #1f2937;
       font-size: 14px;
       text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
     }
     .result-word-row:last-child { border-bottom: none; }
+    .result-word-row:hover { background: #1f2937; }
+    .result-word-row.rw-selected { background: #374151; }
     .result-word-row .rw-pts { color: var(--green); font-weight: 700; }
+
+    /* ── Responsive: stack on small screens ─────────────── */
+    @media (max-width: 480px) {
+      .result-body { flex-direction: column; align-items: stretch; }
+      .result-right { flex-direction: row; justify-content: center; align-items: center; gap: 12px; }
+      .result-mini-tile { width: 28px; font-size: 9px; }
+      .result-mini-tile .rmt-pts { font-size: 6px; }
+    }
 
     .play-btn {
       background: var(--accent);
@@ -623,12 +693,20 @@
     <div class="result-label">Final Score</div>
     <div class="result-final" id="finalScore">0</div>
     <div class="result-stats"  id="resultStats"></div>
-    <div class="result-tabs">
-      <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
-      <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
+    <div class="result-body">
+      <div class="result-left">
+        <div class="result-tabs">
+          <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
+          <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
+        </div>
+        <div class="result-word-list" id="resultWordList"></div>
+        <div class="result-word-list vis-hidden" id="missedWordList"></div>
+      </div>
+      <div class="result-right">
+        <div class="result-right-label">Board</div>
+        <div class="result-mini-board" id="resultMiniBoard"></div>
+      </div>
     </div>
-    <div class="result-word-list" id="resultWordList"></div>
-    <div class="result-word-list vis-hidden" id="missedWordList"></div>
     <div class="btn-row">
       <button class="play-btn" onclick="newGame()">New Game</button>
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
@@ -1098,7 +1176,8 @@ let boardData   = [];
 let selPath     = [];
 let isDragging  = false;
 let gameScore   = 0;
-let foundWords  = new Map();
+let foundWords      = new Map();
+let foundWordPaths  = new Map(); // word → tile-index path used when found
 let timeLeft    = 120;
 let timerHandle = null;
 let gameActive  = false;
@@ -1437,6 +1516,7 @@ function submitWord() {
       const diff = newPts - oldPts;
       gameScore += diff;
       foundWords.set(word, newPts);
+      foundWordPaths.set(word, [...selPath]);
       playSound('word_found');
       $('score').textContent = gameScore;
       updateWordInList(word, newPts);
@@ -1454,6 +1534,7 @@ function submitWord() {
   const pts = calcWordScore(selPath);
   gameScore += pts;
   foundWords.set(word, pts);
+  foundWordPaths.set(word, [...selPath]);
   playSound('word_found');
 
   $('score').textContent = gameScore;
@@ -1695,8 +1776,9 @@ function newGame() {
 function beginGame(seed) {
   currentSeed = seed;
   selPath     = [];
-  gameScore   = 0;
-  foundWords  = new Map();
+  gameScore       = 0;
+  foundWords      = new Map();
+  foundWordPaths  = new Map();
   timeLeft    = settingGameTime;
   gameActive  = true;
 
@@ -1829,7 +1911,7 @@ function endGame() {
   // Found words — sorted by score descending
   const sorted = [...foundWords.entries()].sort((a, b) => b[1] - a[1]);
   $('resultWordList').innerHTML = sorted.map(([w, p]) =>
-    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
+    `<div class="result-word-row" onclick="onResultWordClick('${w}','found')" data-word="${w}"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
   ).join('');
 
   // Missed words — valid words the player never found, sorted by score descending
@@ -1837,12 +1919,13 @@ function endGame() {
     .filter(([w]) => !foundWords.has(w))
     .sort((a, b) => b[1] - a[1]);
   $('missedWordList').innerHTML = missed.map(([w, p]) =>
-    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
+    `<div class="result-word-row" onclick="onResultWordClick('${w}','missed')" data-word="${w}"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
   ).join('');
 
   // Tab labels
   $('foundCount').textContent  = count;
   $('missedCount').textContent = missed.length;
+  renderResultMiniBoard();
   showResultTab('found');      // always open on Found tab
 
   $('overlay').classList.remove('hidden');
@@ -1854,6 +1937,67 @@ function showResultTab(tab) {
   $('tabMissed').classList.toggle('active', !onFound);
   $('resultWordList').classList.toggle('vis-hidden',  !onFound);
   $('missedWordList').classList.toggle('vis-hidden',   onFound);
+  highlightResultMiniBoard(null);
+}
+
+function renderResultMiniBoard() {
+  const container = $('resultMiniBoard');
+  container.innerHTML = '';
+  for (let i = 0; i < 16; i++) {
+    const cell = boardData[i];
+    const div  = document.createElement('div');
+    div.className    = 'result-mini-tile';
+    div.dataset.index = i;
+    if (cell.mult) div.classList.add('rmt-' + cell.mult.css);
+    let inner = `<span>${cell.letter}</span><span class="rmt-pts">${cell.score}</span>`;
+    if (cell.mult) inner += `<span class="rmt-mult">${cell.mult.label}</span>`;
+    div.innerHTML = inner;
+    container.appendChild(div);
+  }
+}
+
+function highlightResultMiniBoard(path) {
+  const tiles = $('resultMiniBoard').querySelectorAll('.result-mini-tile');
+  tiles.forEach(t => t.classList.remove('rmt-active', 'rmt-first'));
+  if (!path) return;
+  path.forEach((idx, i) => {
+    tiles[idx].classList.add('rmt-active');
+    if (i === 0) tiles[idx].classList.add('rmt-first');
+  });
+}
+
+function findWordPath(word) {
+  const letters = word.toLowerCase();
+  function dfs(idx, depth, visited) {
+    if (boardData[idx].letter.toLowerCase() !== letters[depth]) return null;
+    const path = [...visited, idx];
+    if (depth === letters.length - 1) return path;
+    for (let next = 0; next < 16; next++) {
+      if (!path.includes(next) && isAdjacent(idx, next)) {
+        const result = dfs(next, depth + 1, path);
+        if (result) return result;
+      }
+    }
+    return null;
+  }
+  for (let start = 0; start < 16; start++) {
+    const result = dfs(start, 0, []);
+    if (result) return result;
+  }
+  return null;
+}
+
+function onResultWordClick(word, tab) {
+  // Clear previous selection highlight
+  const allRows = $('overlay').querySelectorAll('.result-word-row');
+  allRows.forEach(r => r.classList.remove('rw-selected'));
+  const clicked = $('overlay').querySelector(`.result-word-row[data-word="${word}"]`);
+  if (clicked) clicked.classList.add('rw-selected');
+
+  const path = tab === 'found'
+    ? foundWordPaths.get(word)
+    : findWordPath(word);
+  highlightResultMiniBoard(path || null);
 }
 
 // ═══════════════════════════════════════════════════════════
