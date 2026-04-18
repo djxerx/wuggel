@@ -666,7 +666,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.5</span>
+      <span class="version-label">v0.6</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -996,8 +996,8 @@ const LETTER_CONFIG = {
   A:{w:9,s:1}, B:{w:2,s:3}, C:{w:2,s:3}, D:{w:4,s:2}, E:{w:12,s:1},
   F:{w:2,s:4}, G:{w:3,s:2}, H:{w:2,s:4}, I:{w:9,s:1}, J:{w:1,s:8},
   K:{w:1,s:5}, L:{w:4,s:1}, M:{w:2,s:3}, N:{w:6,s:1}, O:{w:8,s:1},
-  P:{w:2,s:3}, Q:{w:1,s:10},R:{w:6,s:1}, S:{w:4,s:1}, T:{w:6,s:1},
-  U:{w:4,s:1}, V:{w:2,s:4}, W:{w:2,s:4}, X:{w:1,s:8}, Y:{w:2,s:4},
+  P:{w:2,s:3}, Q:{w:0.5,s:10},R:{w:6,s:1}, S:{w:4,s:1}, T:{w:6,s:1},
+  U:{w:4,s:1}, V:{w:2,s:4}, W:{w:2,s:4}, X:{w:0.5,s:8}, Y:{w:1,s:4},
   Z:{w:1,s:10}
 };
 
@@ -1187,15 +1187,17 @@ const $ = id => document.getElementById(id);
 // ═══════════════════════════════════════════════════════════
 //  BOARD GENERATION
 // ═══════════════════════════════════════════════════════════
-function weightedLetter() {
-  const entries = Object.entries(LETTER_CONFIG);
-  const total   = entries.reduce((s, [, v]) => s + v.w, 0);
+function weightedLetter(exclude = null) {
+  const entries = exclude
+    ? Object.entries(LETTER_CONFIG).filter(([l]) => !exclude.has(l))
+    : Object.entries(LETTER_CONFIG);
+  const total = entries.reduce((s, [, v]) => s + v.w, 0);
   let r = rng() * total;
   for (const [l, v] of entries) {
     r -= v.w;
     if (r <= 0) return l;
   }
-  return 'E';
+  return entries[entries.length - 1][0];
 }
 
 function generateBoard() {
@@ -1211,8 +1213,11 @@ function generateBoard() {
       mults[positions[pos++]] = { type, label, css };
     }
   }
+  const RARE_LETTERS = new Set(['Q', 'X', 'Y']);
+  let rarePlaced = false;
   boardData = Array.from({ length: 16 }, (_, i) => {
-    const l = weightedLetter();
+    const l = weightedLetter(rarePlaced ? RARE_LETTERS : null);
+    if (RARE_LETTERS.has(l)) rarePlaced = true;
     return { letter: l, score: LETTER_CONFIG[l].s, mult: mults[i] };
   });
 }
@@ -1798,7 +1803,7 @@ function beginGame(seed) {
 let QUALITY_MIN_WORDS   = 40;    // min Word10K matches on board
 let QUALITY_MIN_TOP_PTS = 100;   // score threshold for "top" words
 let QUALITY_TOP_COUNT   = 2;     // need at least this many top words
-let QUALITY_MAX_TRIES   = 1000;  // default tries per run
+let QUALITY_MAX_TRIES   = 10000;  // default tries per run
 const QUALITY_SEED_STEP = 1_000_000;
 
 // ── User-adjustable settings ─────────────────────────────
@@ -2064,7 +2069,7 @@ function onBoardGateChange() {
   const minWords  = Math.max(1,  parseInt($('settingMinWords').value)       || 40);
   const topCount  = Math.max(0,  parseInt($('settingTopCount').value)       || 2);
   const topPts    = Math.max(10, parseInt($('settingTopPts').value)         || 100);
-  const maxTries  = Math.max(1,  parseInt($('settingMaxTries').value)       || 1000);
+  const maxTries  = Math.max(1,  parseInt($('settingMaxTries').value)       || 10000);
   const fullMin   = Math.max(1,  parseInt($('settingFullMinWords').value)   || 100);
   const fullTopCt = Math.max(0,  parseInt($('settingFullTopCount').value)   || 2);
   const fullTopPt = Math.max(10, parseInt($('settingFullTopPts').value)     || 150);
@@ -2233,7 +2238,7 @@ Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
         <div class="setting-number-row">
           <span class="setting-number-label">Max board search tries</span>
           <input type="number" class="setting-number" id="settingMaxTries"
-                 min="1" max="10000" value="1000" onchange="onBoardGateChange()">
+                 min="1" max="100000" value="10000" onchange="onBoardGateChange()">
         </div>
       </div>
 
