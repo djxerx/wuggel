@@ -1,32 +1,35 @@
-// ── Service Worker — Word Swipe ──────────────────────────────
-const CACHE_NAME = 'word-swipe-v1';
+// ── Service Worker — Wuggel ──────────────────────────────────
+// Cache name matches app version — bump this whenever you deploy
+// so old caches are automatically purged on next visit.
+const CACHE_NAME = 'wuggel-v0.6';
 
-const CORE_ASSETS = [
-  '/',
-  '/index.html',
+const STATIC_ASSETS = [
   '/manifest.json',
   '/words.txt',
+  '/Word10K.txt',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-180.png',
 ];
 
 const SOUND_ASSETS = [
-  '/sounds/tick.wav',
+  '/sounds/Tick1.wav',
+  '/sounds/Tick2.wav',
+  '/sounds/Tick3.wav',
   '/sounds/word_found.wav',
   '/sounds/invalid.wav',
   '/sounds/duplicate.wav',
   '/sounds/warning.wav',
   '/sounds/game_over.wav',
   '/sounds/highscore.wav',
+  '/sounds/game_start.wav',
 ];
 
-// Install: pre-cache core assets; cache sounds only if they exist
+// Install: pre-cache static assets; cache sounds optionally
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      cache.addAll(CORE_ASSETS).then(() =>
-        // Sounds are optional — never fail install if missing
+      cache.addAll(STATIC_ASSETS).then(() =>
         Promise.allSettled(
           SOUND_ASSETS.map(url =>
             fetch(url).then(r => { if (r.ok) cache.put(url, r); }).catch(() => {})
@@ -37,7 +40,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate: purge old caches
+// Activate: purge all old caches, claim existing tabs immediately
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
@@ -46,12 +49,33 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: cache-first for same-origin GET requests
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  // ── Network-first for the app shell (index.html / navigation) ──
+  // Always tries the network so a fresh deployment is picked up
+  // immediately. Falls back to cache only when offline.
+  if (event.request.mode === 'navigate' ||
+      url.pathname === '/' ||
+      url.pathname === '/index.html') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // ── Cache-first for everything else (sounds, icons, dictionary) ──
+  // These are large and change rarely; serve from cache for speed.
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
@@ -61,9 +85,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') return caches.match('/index.html');
-      });
+      }).catch(() => {});
     })
   );
 });
