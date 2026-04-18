@@ -282,7 +282,7 @@
       margin-bottom: 16px;
       text-align: left;
     }
-    .result-left { flex: 1; min-width: 0; }
+    .result-left { flex: 0 0 180px; min-width: 0; }
     .result-right {
       flex: 0 0 auto;
       display: flex;
@@ -306,23 +306,23 @@
       border: 1px solid #374151;
     }
     .result-mini-tile {
-      width: 34px;
+      width: 61px;
       aspect-ratio: 1;
       background: #1f2937;
-      border-radius: 5px;
+      border-radius: 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 20px;
       font-weight: 800;
       color: var(--text);
       position: relative;
       transition: background 0.15s, color 0.15s;
       line-height: 1.1;
     }
-    .result-mini-tile .rmt-pts  { font-size: 7px; font-weight: 600; color: var(--muted); line-height: 1; }
-    .result-mini-tile .rmt-mult { position: absolute; top: 1px; right: 2px; font-size: 5px; font-weight: 700; text-transform: uppercase; }
+    .result-mini-tile .rmt-pts  { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1; }
+    .result-mini-tile .rmt-mult { position: absolute; top: 2px; right: 3px; font-size: 8px; font-weight: 700; text-transform: uppercase; }
     .result-mini-tile.rmt-dl { background: #1e3a5f; }
     .result-mini-tile.rmt-tl { background: #1a3a2a; }
     .result-mini-tile.rmt-dw { background: #3d2012; }
@@ -359,8 +359,8 @@
     @media (max-width: 480px) {
       .result-body { flex-direction: column; align-items: stretch; }
       .result-right { flex-direction: row; justify-content: center; align-items: center; gap: 12px; }
-      .result-mini-tile { width: 28px; font-size: 9px; }
-      .result-mini-tile .rmt-pts { font-size: 6px; }
+      .result-mini-tile { width: 50px; font-size: 16px; }
+      .result-mini-tile .rmt-pts { font-size: 10px; }
     }
 
     .play-btn {
