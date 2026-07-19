@@ -91,6 +91,44 @@
     }
     .new-btn:hover { background: #21293a; }
 
+    /* Player selection grid in settings */
+    .player-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .player-btn {
+      padding: 9px 4px;
+      border: 1.5px solid #4b5563;
+      border-radius: 8px;
+      background: #1f2937;
+      color: #d1d5db;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .player-btn.active {
+      background: var(--green);
+      border-color: #6ee7c0;
+      color: #06281c;
+    }
+    .player-stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 8px 0;
+    }
+    .player-stats-table td, .player-stats-table th {
+      padding: 4px 6px;
+      text-align: right;
+      border-bottom: 1px solid #374151;
+    }
+    .player-stats-table td:first-child, .player-stats-table th:first-child { text-align: left; }
+
     /* Version label + button grouped at the right of the header */
     .header-end { display: flex; align-items: center; gap: 7px; }
     .version-label { font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: 0.3px; }
@@ -169,6 +207,14 @@
     .tile.valid-word {
       background: var(--green);
       border-color: #6ee7c0;
+    }
+
+    /* Word already found for the same or fewer points */
+    .tile.dup-word {
+      background: #f59e0b;
+      border-color: #fbbf24;
+      transform: scale(1.06);
+      z-index: 2;
     }
 
     .tile.used { opacity: 0.45; }
@@ -576,6 +622,10 @@
       <span class="stat-label">Score</span>
       <span class="stat-value" id="score">0</span>
     </div>
+    <div class="stat">
+      <span class="stat-label">Par</span>
+      <span class="stat-value" id="parValue" style="color:var(--muted)">–</span>
+    </div>
     <div class="timer-wrap">
       <div class="timer-value ok" id="timer">2:00</div>
     </div>
@@ -596,7 +646,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.53</span>
+      <span class="version-label">v0.56</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -705,6 +755,15 @@
     <h2>⚙ Settings</h2>
     <p class="settings-subtitle" id="settingsPausedNote" style="display:none">Game paused while open</p>
 
+    <!-- ── Player ─────────────────────────────────────────── -->
+    <div class="setting-section">
+      <div class="setting-section-title">Player</div>
+      <div class="player-grid" id="playerGrid"></div>
+      <button class="play-btn" onclick="openPlayerEdit()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+        ✎ Edit Player
+      </button>
+    </div>
+
     <!-- ── Swipe ──────────────────────────────────────────── -->
     <div class="setting-section">
       <div class="setting-section-title">Swipe Accuracy</div>
@@ -723,52 +782,16 @@
       </div>
     </div>
 
-    <!-- ── Letter Balance ─────────────────────────────────── -->
+    <!-- ── Sub-menus ──────────────────────────────────────── -->
     <div class="setting-section">
-      <div class="setting-section-title">Letter Balance</div>
-      <p class="setting-desc" style="margin:0 0 8px">
-        Boards are dealt from a Scrabble-style tile bag and redealt until
-        they satisfy these rules. A board with a Q always includes a U.
-      </p>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Min vowels</span>
-        <input type="number" class="setting-number" id="settingMinVowels"
-               min="0" max="16" value="5" onchange="onSettingChange()">
-      </div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Max vowels</span>
-        <input type="number" class="setting-number" id="settingMaxVowels"
-               min="0" max="16" value="7" onchange="onSettingChange()">
-      </div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Max rare letters (J/Q/X/Z)</span>
-        <input type="number" class="setting-number" id="settingMaxRare"
-               min="0" max="4" value="1" onchange="onSettingChange()">
-      </div>
-      <div class="setting-number-row">
-        <span class="setting-number-label">Max copies of one letter</span>
-        <input type="number" class="setting-number" id="settingMaxDupes"
-               min="1" max="16" value="3" onchange="onSettingChange()">
-      </div>
-      <div class="setting-toggle-row">
-        <div>
-          <span class="setting-toggle-label">Spread letters evenly</span>
-          <p class="setting-desc" style="margin:2px 0 0">
-            Rearranges tiles to break up vowel/consonant clusters,
-            especially along the edges, and keeps U near Q.
-          </p>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="settingAntiCluster" checked onchange="onSettingChange()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!-- ── Board Quality Gate (sub-modal) ───────────────────── -->
-    <div class="setting-section">
-      <button class="play-btn" onclick="openBoardGate()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+      <button class="play-btn" onclick="openBoardOptions()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px;margin-bottom:8px">
+        ⚙ Board Options
+      </button>
+      <button class="play-btn" onclick="openBoardGate()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px;margin-bottom:8px">
         ⚙ Qualified Board
+      </button>
+      <button class="play-btn" onclick="openScoring()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+        ⚙ Scoring
       </button>
     </div>
 
@@ -794,6 +817,21 @@
           <span class="toggle-slider"></span>
         </label>
       </div>
+    </div>
+
+    <!-- ── Share Settings ─────────────────────────────────── -->
+    <div class="setting-section">
+      <div class="setting-section-title">Share Settings</div>
+      <p class="setting-desc" style="margin:0 0 8px">
+        Export your settings to a file to send to another player, so you
+        both play with identical rules.
+      </p>
+      <div style="display:flex;gap:8px">
+        <button class="play-btn" onclick="exportSettings()" style="flex:1;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">Export</button>
+        <button class="play-btn" onclick="importSettings()" style="flex:1;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">Import</button>
+      </div>
+      <input type="file" id="importFileInput" accept=".json,application/json"
+             style="display:none" onchange="onImportFile(event)">
     </div>
 
     <button class="play-btn" onclick="closeSettings()" style="width:100%;margin-top:4px">Done</button>
@@ -962,9 +1000,12 @@ function buildTrie(words) {
   return root;
 }
 
+let allWordPaths = new Map();   // word → tile path of its best-scoring route (for par)
+
 function findAllWords() {
   if (!TRIE) return new Map();
   const found = new Map();
+  allWordPaths = new Map();
 
   function dfs(pos, path, node) {
     const c     = boardData[pos].letter.toLowerCase();
@@ -977,7 +1018,10 @@ function findAllWords() {
       const word = path.map(i => boardData[i].letter).join('').toLowerCase();
       const pts  = calcWordScore([...path]);
       // Keep the highest-scoring path in case the same word is reachable multiple ways
-      if (!found.has(word) || found.get(word) < pts) found.set(word, pts);
+      if (!found.has(word) || found.get(word) < pts) {
+        found.set(word, pts);
+        allWordPaths.set(word, [...path]);
+      }
     }
 
     for (let next = 0; next < 16; next++) {
@@ -1061,6 +1105,122 @@ function showHighScores(newEntry) {
 function closeHighScores() {
   $('hsOverlay').classList.add('hidden');
   if (!gameActive) $('overlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PLAYER PROFILES & PAR
+//  Par = Board Potential × Player Ratio.
+//  Board Potential: expected score for an average player — every
+//  available word's value weighted by a find-probability based on
+//  length, commonness, and swipe-path complexity.
+//  Player Ratio: golf-style handicap — mean of the best half
+//  (max 8) of the player's last 20 games' (score / potential).
+// ═══════════════════════════════════════════════════════════
+const PLAYERS_KEY      = 'wordswipe_players';
+const GAME_HISTORY_MAX = 50;
+
+let guestMode       = false;   // session-only; never persisted, so a
+                               // reload reverts to the saved player
+let boardPotential  = 0;       // potential of the current board
+let currentParValue = 0;       // par shown for the current game
+
+function defaultPlayerSlot(n) { return { name: 'Player ' + n, games: [] }; }
+
+function loadPlayersData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(PLAYERS_KEY));
+    if (d && d.players && d.active >= 1 && d.active <= 5) return d;
+  } catch (_) {}
+  const players = {};
+  for (let i = 1; i <= 5; i++) players[i] = defaultPlayerSlot(i);
+  return { active: 1, players };
+}
+
+let playersData = loadPlayersData();
+
+function savePlayersData() {
+  localStorage.setItem(PLAYERS_KEY, JSON.stringify(playersData));
+}
+
+function activePlayer() {
+  return guestMode ? null : playersData.players[playersData.active];
+}
+
+// ── Find-probability model (average player) ──────────────
+// Base chance of finding a word of a given length …
+const FIND_PROB_BY_LEN = { 2: 0.55, 3: 0.40, 4: 0.22, 5: 0.10, 6: 0.05, 7: 0.025, 8: 0.012 };
+// … cut sharply for words outside the common Word10K list …
+const OBSCURE_FACTOR = 0.12;
+// … and dampened for twisty swipe paths (per direction change).
+const TURN_DAMPING = 0.12;
+
+// Number of direction changes along a tile path
+function pathTurns(path) {
+  let turns = 0, pdr = null, pdc = null;
+  for (let i = 1; i < path.length; i++) {
+    const dr = (path[i] >> 2) - (path[i - 1] >> 2);
+    const dc = (path[i] & 3)  - (path[i - 1] & 3);
+    if (pdr !== null && (dr !== pdr || dc !== pdc)) turns++;
+    pdr = dr; pdc = dc;
+  }
+  return turns;
+}
+
+function computeBoardPotential() {
+  let pot = 0;
+  for (const [w, pts] of allPossibleWords) {
+    let p = FIND_PROB_BY_LEN[Math.min(w.length, 8)];
+    if (!WORD10K.has(w)) p *= OBSCURE_FACTOR;
+    const path = allWordPaths.get(w);
+    if (path) p *= 1 / (1 + TURN_DAMPING * pathTurns(path));
+    pot += pts * p;
+  }
+  pot *= Math.pow(settingGameTime / 120, 0.7);   // longer games help sub-linearly
+  return Math.round(pot);
+}
+
+// Golf-style handicap ratio for a player (1 = average player)
+function playerRatio(pl) {
+  if (!pl || !pl.games.length) return 1;
+  const ratios = pl.games.slice(-20)
+    .filter(g => g.potential > 0)
+    .map(g => g.score / g.potential);
+  if (!ratios.length) return 1;
+  ratios.sort((a, b) => b - a);
+  const keep = ratios.slice(0, Math.max(1, Math.min(8, Math.ceil(ratios.length / 2))));
+  const mean = keep.reduce((a, b) => a + b, 0) / keep.length;
+  return Math.min(3, Math.max(0.2, mean));
+}
+
+function computeAndShowPar() {
+  boardPotential  = computeBoardPotential();
+  currentParValue = Math.max(10, Math.round(boardPotential * playerRatio(activePlayer()) / 5) * 5);
+  $('parValue').textContent = currentParValue;
+}
+
+// Record the finished game into the active player's history
+function recordGameForPlayer() {
+  const pl = activePlayer();
+  if (!pl || boardPotential <= 0) return;
+  const byLen = {};
+  for (const [w] of allPossibleWords) {
+    const L = Math.min(w.length, 7);
+    (byLen[L] ??= [0, 0])[1]++;
+  }
+  let common = 0, obscure = 0;
+  for (const [w] of foundWords) {
+    const L = Math.min(w.length, 7);
+    (byLen[L] ??= [0, 0])[0]++;
+    if (WORD10K.has(w)) common++; else obscure++;
+  }
+  pl.games.push({
+    t: Date.now(), seed: currentSeed, score: gameScore,
+    potential: boardPotential, par: currentParValue,
+    byLen, common, obscure,
+  });
+  if (pl.games.length > GAME_HISTORY_MAX)
+    pl.games.splice(0, pl.games.length - GAME_HISTORY_MAX);
+  savePlayersData();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1268,7 +1428,7 @@ function renderBoard() {
     tile.appendChild(letter);
     tile.appendChild(pts);
 
-    if (cell.mult) {
+    if (cell.mult && settingStdMults) {   // badges hidden when tile multipliers are off
       const m = document.createElement('div');
       m.className   = `tile-mult ${cell.mult.css}`;
       m.textContent = cell.mult.label;
@@ -1345,7 +1505,7 @@ function calcWordScore(path) {
   for (const i of path) {
     const cell = boardData[i];
     let ls = cell.score;
-    if (cell.mult) {
+    if (settingStdMults && cell.mult) {
       if (cell.mult.type === 'dl') ls *= 2;
       if (cell.mult.type === 'tl') ls *= 3;
       if (cell.mult.type === 'dw') wordMult *= 2;
@@ -1358,7 +1518,16 @@ function calcWordScore(path) {
   else if (path.length >= 7) total += 15;
   else if (path.length >= 6) total += 8;
   else if (path.length >= 5) total += 3;
-  return total;
+
+  // Word-length multiplier: every letter past the base adds
+  // (pct − 100)% to the word's multiplier.  base 2 @ 200% →
+  // 3 letters ×2, 4 letters ×3, …
+  if (settingLenPct > 100 && path.length > settingLenBase) {
+    total *= 1 + (path.length - settingLenBase) * (settingLenPct - 100) / 100;
+  }
+
+  total *= settingGenMult;
+  return Math.round(total);
 }
 
 function updateWordDisplay() {
@@ -1407,18 +1576,23 @@ function updateWordDisplay() {
 }
 
 function updateTileStyles() {
-  const tiles   = $('board').querySelectorAll('.tile');
-  const word    = currentWord();
-  const isValid = word.length >= 2 && WORDS.has(word) &&
-    (!foundWords.has(word) || calcWordScore(selPath) > foundWords.get(word));
+  const tiles  = $('board').querySelectorAll('.tile');
+  const word   = currentWord();
+  const isWord = word.length >= 2 && WORDS.has(word);
+  // Already found for the same or fewer points → orange warning
+  const isDup   = isWord && foundWords.has(word) &&
+                  calcWordScore(selPath) <= foundWords.get(word);
+  const isValid = isWord && !isDup;
 
   // When Color Correct is off, always show the neutral "selected" style
   // so the player can't tell whether a word is valid mid-swipe.
   const showValid = isValid && settingColorCorrect;
+  const showDup   = isDup   && settingColorCorrect;
 
   tiles.forEach((t, i) => {
-    t.classList.remove('selected', 'valid-word');
-    if (selPath.includes(i)) t.classList.add(showValid ? 'valid-word' : 'selected');
+    t.classList.remove('selected', 'valid-word', 'dup-word');
+    if (selPath.includes(i))
+      t.classList.add(showValid ? 'valid-word' : showDup ? 'dup-word' : 'selected');
   });
   drawPath(showValid);
 }
@@ -1728,6 +1902,12 @@ let settingAntiCluster    = true;   // spread vowels/consonants evenly
 let settingGameTime       = 120;    // game duration in seconds
 let settingColorCorrect   = true;   // show green tiles when word is valid
 
+// Scoring options
+let settingStdMults       = true;   // apply DL/TL/DW/TW tiles
+let settingLenPct         = 100;    // word-length multiplier % (100 = off)
+let settingLenBase        = 2;      // letters before the length multiplier kicks in
+let settingGenMult        = 1;      // flat multiplier on every word score
+
 // Full word-list quality gate options
 let QUALITY_FULL_MIN_ENABLED = true;   // toggle: check min words on full list
 let QUALITY_FULL_MIN_WORDS   = 100;    // min words from full list
@@ -1773,6 +1953,7 @@ function findQualityBoard(baseSeed, startAttempt = 0, maxTries = QUALITY_MAX_TRI
 
     if (boardMeetsQuality(allPossibleWords)) {
       renderBoard();
+      computeAndShowPar();
       playSound('game_start');
       startTimer();
       return;
@@ -1800,6 +1981,7 @@ function retryQualitySearch() {
 function playAnywayFromQuality() {
   $('qualityOverlay').classList.add('hidden');
   renderBoard();
+  computeAndShowPar();
   playSound('game_start');
   startTimer();
 }
@@ -1820,11 +2002,17 @@ function endGame() {
   saveHighScore(gameScore, currentSeed);
   playSound(isHigh ? 'highscore' : 'game_over');
 
+  recordGameForPlayer();   // no-op in Guest mode
+
   const count  = foundWords.size;
   const maxPts = [...allPossibleWords.values()].reduce((a, b) => a + b, 0);
+  const diff   = gameScore - currentParValue;
+  const parTxt = currentParValue > 0
+    ? ` · Par ${currentParValue} (${diff >= 0 ? '+' : ''}${diff})`
+    : '';
   $('finalScore').textContent  = gameScore.toLocaleString();
   $('resultStats').textContent =
-    `Seed ${String(currentSeed).padStart(6, '0')} · ${count} of ${allPossibleWords.size} words · max ${maxPts.toLocaleString()} pts`;
+    `Seed ${String(currentSeed).padStart(6, '0')} · ${count} of ${allPossibleWords.size} words · max ${maxPts.toLocaleString()} pts${parTxt}`;
 
   // Found words — sorted by score descending
   const sorted = [...foundWords.entries()].sort((a, b) => b[1] - a[1]);
@@ -1896,7 +2084,163 @@ function openSettings() {
     clearInterval(timerHandle);
     $('settingsPausedNote').style.display = 'block';
   }
+  renderPlayerButtons();
   $('settingsOverlay').classList.remove('hidden');
+}
+
+// ── Player selection & editing ───────────────────────────
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderPlayerButtons() {
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    const active = !guestMode && playersData.active === i;
+    html += `<button class="player-btn ${active ? 'active' : ''}"
+      onclick="selectPlayer(${i})">${escapeHtml(playersData.players[i].name)}</button>`;
+  }
+  html += `<button class="player-btn ${guestMode ? 'active' : ''}"
+    onclick="selectGuest()">Guest</button>`;
+  $('playerGrid').innerHTML = html;
+}
+
+function selectPlayer(i) {
+  guestMode = false;
+  playersData.active = i;
+  savePlayersData();
+  renderPlayerButtons();
+  if (gameActive && boardPotential > 0) computeAndShowPar();   // par follows the player
+}
+
+function selectGuest() {
+  guestMode = true;    // deliberately NOT persisted — a reload reverts
+  renderPlayerButtons();
+  if (gameActive && boardPotential > 0) computeAndShowPar();
+}
+
+function openPlayerEdit() {
+  if (guestMode) {
+    alert('Guest games are not recorded. Select a player slot to edit.');
+    return;
+  }
+  const pl = activePlayer();
+  $('playerNameInput').value = pl.name;
+  $('playerStatsBox').innerHTML = renderPlayerStats(pl);
+  $('settingsOverlay').classList.add('hidden');
+  $('playerModal').classList.remove('hidden');
+}
+
+function closePlayerEdit() {
+  $('playerModal').classList.add('hidden');
+  renderPlayerButtons();
+  $('settingsOverlay').classList.remove('hidden');
+}
+
+function onPlayerRename() {
+  const pl = activePlayer();
+  if (!pl) return;
+  const name = $('playerNameInput').value.trim();
+  pl.name = name || ('Player ' + playersData.active);
+  $('playerNameInput').value = pl.name;
+  savePlayersData();
+}
+
+function clearPlayerStats() {
+  const pl = activePlayer();
+  if (!pl) return;
+  if (!confirm(`Delete all recorded games for ${pl.name}?`)) return;
+  pl.games = [];
+  savePlayersData();
+  $('playerStatsBox').innerHTML = renderPlayerStats(pl);
+}
+
+function exportPlayer() {
+  const pl = activePlayer();
+  if (!pl) return;
+  const blob = new Blob([JSON.stringify({ wordswipePlayer: 1, ...pl })],
+                       { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `wordswipe-player-${pl.name.replace(/[^\w-]+/g, '_')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function onPlayerImportFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (!d || d.wordswipePlayer !== 1 || typeof d.name !== 'string' || !Array.isArray(d.games))
+        throw new Error();
+      if (!confirm(`Replace "${activePlayer().name}" with imported player "${d.name}" (${d.games.length} games)?`))
+        return;
+      playersData.players[playersData.active] = {
+        name: d.name.slice(0, 14),
+        games: d.games.slice(-GAME_HISTORY_MAX),
+      };
+      savePlayersData();
+      openPlayerEdit();   // refresh the modal with the imported data
+    } catch (_) {
+      alert('Not a valid Word Swipe player file.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Readable stats summary for the edit modal
+function renderPlayerStats(pl) {
+  const g = pl.games;
+  if (!g.length) return '<p class="setting-desc" style="margin:0">No games recorded yet. Finish a game while this player is selected and stats will appear here.</p>';
+
+  const avg   = Math.round(g.reduce((a, b) => a + b.score, 0) / g.length);
+  const best  = Math.max(...g.map(x => x.score));
+  const ratio = playerRatio(pl);
+  const vsPar = g.filter(x => x.par > 0);
+  const avgVsPar = vsPar.length
+    ? Math.round(vsPar.reduce((a, b) => a + (b.score - b.par), 0) / vsPar.length)
+    : 0;
+
+  // Aggregate find-rate by word length across all recorded games
+  const agg = {};
+  for (const game of g) {
+    for (const [L, fa] of Object.entries(game.byLen || {})) {
+      (agg[L] ??= [0, 0]);
+      agg[L][0] += fa[0];
+      agg[L][1] += fa[1];
+    }
+  }
+  const lenRows = Object.keys(agg).sort((a, b) => a - b).map(L => {
+    const [f, a] = agg[L];
+    const pct = a ? Math.round(100 * f / a) : 0;
+    return `<tr><td>${L >= 7 ? '7+' : L} letters</td><td>${f} of ${a}</td><td>${pct}%</td></tr>`;
+  }).join('');
+
+  const totCommon  = g.reduce((a, b) => a + (b.common  || 0), 0);
+  const totObscure = g.reduce((a, b) => a + (b.obscure || 0), 0);
+
+  return `
+    <table class="player-stats-table">
+      <tr><td>Games played</td><td colspan="2">${g.length}</td></tr>
+      <tr><td>Average score</td><td colspan="2">${avg.toLocaleString()}</td></tr>
+      <tr><td>Best score</td><td colspan="2">${best.toLocaleString()}</td></tr>
+      <tr><td>Avg vs par</td><td colspan="2">${avgVsPar >= 0 ? '+' : ''}${avgVsPar}</td></tr>
+      <tr><td>Skill factor</td><td colspan="2">${Math.round(ratio * 100)}% of average</td></tr>
+      <tr><td>Rare words found</td><td colspan="2">${totObscure} (vs ${totCommon} common)</td></tr>
+    </table>
+    <div class="setting-section-title" style="margin-top:8px">Words Found by Length</div>
+    <table class="player-stats-table">
+      <tr><th>Length</th><th>Found</th><th>Rate</th></tr>
+      ${lenRows}
+    </table>`;
 }
 
 function closeSettings() {
@@ -1915,6 +2259,26 @@ function openBoardGate() {
 
 function closeBoardGate() {
   $('boardGateModal').classList.add('hidden');
+  $('settingsOverlay').classList.remove('hidden');
+}
+
+function openBoardOptions() {
+  $('settingsOverlay').classList.add('hidden');
+  $('boardOptionsModal').classList.remove('hidden');
+}
+
+function closeBoardOptions() {
+  $('boardOptionsModal').classList.add('hidden');
+  $('settingsOverlay').classList.remove('hidden');
+}
+
+function openScoring() {
+  $('settingsOverlay').classList.add('hidden');
+  $('scoringModal').classList.remove('hidden');
+}
+
+function closeScoring() {
+  $('scoringModal').classList.add('hidden');
   $('settingsOverlay').classList.remove('hidden');
 }
 
@@ -1981,6 +2345,79 @@ function onSettingChange() {
   saveSettings();
 }
 
+// Scoring sub-modal controls — syncs vars, re-renders badges, and
+// re-solves the board so possible-word scores match the new rules.
+function onScoringChange() {
+  settingStdMults = $('settingStdMults').checked;
+
+  let lp = parseInt($('settingLenPct').value);
+  if (isNaN(lp)) lp = 100;
+  settingLenPct = Math.min(1000, Math.max(100, lp));
+  $('settingLenPct').value = settingLenPct;
+
+  let lb = parseInt($('settingLenBase').value);
+  if (isNaN(lb)) lb = 2;
+  settingLenBase = Math.min(8, Math.max(1, lb));
+  $('settingLenBase').value = settingLenBase;
+
+  let gm = parseFloat($('settingGenMult').value);
+  if (isNaN(gm)) gm = 1;
+  settingGenMult = Math.min(100, Math.max(0.5, gm));
+  $('settingGenMult').value = settingGenMult;
+
+  if (boardData.length) {
+    renderBoard();                              // badge visibility may have changed
+    if (TRIE) allPossibleWords = findAllWords(); // keep missed-word scores consistent
+  }
+  saveSettings();
+}
+
+// ── Export / import settings as a file ───────────────────
+function exportSettings() {
+  saveSettings();   // make sure the stored blob reflects the current UI
+  const data = localStorage.getItem('wordswipe_settings') || '{}';
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'wordswipe-settings.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function importSettings() { $('importFileInput').click(); }
+
+const KNOWN_SETTING_KEYS = [
+  'touchRadius', 'minVowels', 'maxVowels', 'maxRare', 'maxDupes', 'antiCluster',
+  'minWords', 'topCount', 'topPts', 'maxTries', 'gameTime', 'colorCorrect',
+  'stdMults', 'lenPct', 'lenBase', 'genMult',
+  'fullMinEnabled', 'fullMinWords', 'fullTopEnabled', 'fullTopCount', 'fullTopPts',
+];
+
+function onImportFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const s = JSON.parse(reader.result);
+      if (typeof s !== 'object' || s === null || Array.isArray(s)) throw new Error();
+      if (!KNOWN_SETTING_KEYS.some(k => k in s)) throw new Error();
+      // keep only recognised keys, then apply through the normal load path
+      const clean = {};
+      for (const k of KNOWN_SETTING_KEYS) if (k in s) clean[k] = s[k];
+      localStorage.setItem('wordswipe_settings', JSON.stringify(clean));
+      location.reload();
+    } catch (_) {
+      alert('Not a valid Word Swipe settings file.');
+    }
+  };
+  reader.readAsText(file);
+}
+
 function saveSettings() {
   localStorage.setItem('wordswipe_settings', JSON.stringify({
     touchRadius:   Math.round(touchRadiusFrac * 100),
@@ -1995,6 +2432,10 @@ function saveSettings() {
     maxTries:           QUALITY_MAX_TRIES,
     gameTime:           settingGameTime,
     colorCorrect:       settingColorCorrect,
+    stdMults:           settingStdMults,
+    lenPct:             settingLenPct,
+    lenBase:            settingLenBase,
+    genMult:            settingGenMult,
     fullMinEnabled:     QUALITY_FULL_MIN_ENABLED,
     fullMinWords:       QUALITY_FULL_MIN_WORDS,
     fullTopEnabled:     QUALITY_FULL_TOP_ENABLED,
@@ -2027,6 +2468,10 @@ function saveSettings() {
     if (s.maxTries      != null) { QUALITY_MAX_TRIES        = s.maxTries;      $('settingMaxTries').value             = s.maxTries;      }
     if (s.gameTime      != null) { settingGameTime           = s.gameTime;      $('settingGameTime').value             = s.gameTime;      }
     if (s.colorCorrect  != null) { settingColorCorrect       = Boolean(s.colorCorrect);  $('settingColorCorrect').checked       = settingColorCorrect;       }
+    if (s.stdMults != null) { settingStdMults = Boolean(s.stdMults); $('settingStdMults').checked = settingStdMults; }
+    if (s.lenPct   != null) { settingLenPct   = s.lenPct;   $('settingLenPct').value   = s.lenPct;   }
+    if (s.lenBase  != null) { settingLenBase  = s.lenBase;  $('settingLenBase').value  = s.lenBase;  }
+    if (s.genMult  != null) { settingGenMult  = s.genMult;  $('settingGenMult').value  = s.genMult;  }
     if (s.fullMinEnabled != null) { QUALITY_FULL_MIN_ENABLED = Boolean(s.fullMinEnabled); $('settingFullMinEnabled').checked    = QUALITY_FULL_MIN_ENABLED;  }
     if (s.fullMinWords  != null) { QUALITY_FULL_MIN_WORDS    = s.fullMinWords;  $('settingFullMinWords').value         = s.fullMinWords;  }
     if (s.fullTopEnabled != null) { QUALITY_FULL_TOP_ENABLED = Boolean(s.fullTopEnabled); $('settingFullTopEnabled').checked   = QUALITY_FULL_TOP_ENABLED;  }
@@ -2116,6 +2561,157 @@ Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
       </div>
 
       <button class="play-btn" onclick="closeBoardGate()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
+
+  <!-- ══ Board Options sub-modal (letter balance) ══ -->
+  <div id="boardOptionsModal" class="overlay hidden">
+    <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+      <h2 style="text-align:center;margin-bottom:14px">⚙ Board Options</h2>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Letter Balance</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Boards are dealt from a Scrabble-style tile bag and redealt until
+          they satisfy these rules. A board with a Q always includes a U.
+        </p>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Min vowels</span>
+          <input type="number" class="setting-number" id="settingMinVowels"
+                 min="0" max="16" value="5" onchange="onSettingChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Max vowels</span>
+          <input type="number" class="setting-number" id="settingMaxVowels"
+                 min="0" max="16" value="7" onchange="onSettingChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Max rare letters (J/Q/X/Z)</span>
+          <input type="number" class="setting-number" id="settingMaxRare"
+                 min="0" max="4" value="1" onchange="onSettingChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Max copies of one letter</span>
+          <input type="number" class="setting-number" id="settingMaxDupes"
+                 min="1" max="16" value="3" onchange="onSettingChange()">
+        </div>
+        <div class="setting-toggle-row">
+          <div>
+            <span class="setting-toggle-label">Spread letters evenly</span>
+            <p class="setting-desc" style="margin:2px 0 0">
+              Rearranges tiles to break up vowel/consonant clusters,
+              especially along the edges, and keeps U near Q.
+            </p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settingAntiCluster" checked onchange="onSettingChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="play-btn" onclick="closeBoardOptions()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
+
+  <!-- ══ Scoring sub-modal ══ -->
+  <div id="scoringModal" class="overlay hidden">
+    <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+      <h2 style="text-align:center;margin-bottom:14px">⚙ Scoring</h2>
+
+      <div class="setting-section">
+        <div class="setting-toggle-row">
+          <div>
+            <span class="setting-toggle-label">Standard tile multipliers</span>
+            <p class="setting-desc" style="margin:2px 0 0">
+              Apply the DL / TL / DW / TW tiles. When off, the
+              multiplier badges are hidden and every tile scores
+              its plain letter value.
+            </p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settingStdMults" checked onchange="onScoringChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Word Length Multiplier</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Boosts longer words. Each letter beyond the base adds
+          (percent − 100%) to the word's multiplier. Example: base 2 at
+          200% doubles a 3-letter word, triples a 4-letter word.
+          100% = off.
+        </p>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Multiplier (%)</span>
+          <input type="number" class="setting-number" id="settingLenPct"
+                 min="100" max="1000" step="10" value="100" onchange="onScoringChange()">
+        </div>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Base letters</span>
+          <input type="number" class="setting-number" id="settingLenBase"
+                 min="1" max="8" value="2" onchange="onScoringChange()">
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">General Multiplier</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Flat multiplier applied to every word's score — handy for
+          keeping scores satisfying when other multipliers are off.
+        </p>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Multiply all scores by</span>
+          <input type="number" class="setting-number" id="settingGenMult"
+                 min="0.5" max="100" step="0.5" value="1" onchange="onScoringChange()">
+        </div>
+      </div>
+
+      <button class="play-btn" onclick="closeScoring()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
+
+  <!-- ══ Player edit sub-modal ══ -->
+  <div id="playerModal" class="overlay hidden">
+    <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+      <h2 style="text-align:center;margin-bottom:14px">✎ Edit Player</h2>
+
+      <div class="setting-section">
+        <div class="setting-number-row">
+          <span class="setting-number-label">Name</span>
+          <input type="text" class="setting-number" id="playerNameInput" maxlength="14"
+                 style="width:130px;text-align:left" onchange="onPlayerRename()">
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Stats</div>
+        <div id="playerStatsBox"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Transfer</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Export this player's history to a file to move it to another device.
+          Importing replaces this player slot.
+        </p>
+        <div style="display:flex;gap:8px">
+          <button class="play-btn" onclick="exportPlayer()" style="flex:1;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">Export</button>
+          <button class="play-btn" onclick="$('playerImportInput').click()" style="flex:1;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">Import</button>
+        </div>
+        <input type="file" id="playerImportInput" accept=".json,application/json"
+               style="display:none" onchange="onPlayerImportFile(event)">
+      </div>
+
+      <div class="setting-section">
+        <button class="play-btn" onclick="clearPlayerStats()" style="width:100%;background:#7f1d1d;color:#fecaca;font-size:14px;padding:10px">
+          Clear Stats
+        </button>
+      </div>
+
+      <button class="play-btn" onclick="closePlayerEdit()" style="width:100%;margin-top:4px">Done</button>
     </div>
   </div>
 </body>
