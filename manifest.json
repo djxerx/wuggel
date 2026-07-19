@@ -1,12 +1,12 @@
 {
-  "name": "Jacks or Better",
-  "short_name": "Video Poker",
-  "description": "Jacks or Better video poker — 9/6 pay table",
+  "name": "Word Swipe",
+  "short_name": "Word Swipe",
+  "description": "Swipe adjacent letters to build words on a 4×4 grid",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "landscape",
-  "background_color": "#0a1a3a",
-  "theme_color": "#0a1a3a",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "categories": ["games", "entertainment"],
   "icons": [
     {
