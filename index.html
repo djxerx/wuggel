@@ -259,9 +259,9 @@
       background: var(--panel);
       border: 1px solid #374151;
       border-radius: 24px;
-      padding: 28px 24px;
+      padding: 36px 32px;
       text-align: center;
-      width: min(660px, 95vw);
+      width: min(340px, 90vw);
       animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     @keyframes pop-in {
@@ -272,70 +272,12 @@
     .result-card h2    { font-size: 22px; color: var(--muted); margin-bottom: 4px; }
     .result-final      { font-size: 72px; font-weight: 900; color: var(--accent); line-height: 1; }
     .result-label      { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-    .result-stats      { font-size: 15px; color: var(--muted); margin-bottom: 14px; }
-
-    /* ── Result body: side-by-side layout ───────────────── */
-    .result-body {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-      margin-bottom: 16px;
-      text-align: left;
-    }
-    .result-left { flex: 0 0 180px; min-width: 0; }
-    .result-right {
-      flex: 0 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-    .result-right-label {
-      font-size: 10px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .result-mini-board {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 3px;
-      padding: 6px;
-      background: #111827;
-      border-radius: 10px;
-      border: 1px solid #374151;
-    }
-    .result-mini-tile {
-      width: 61px;
-      aspect-ratio: 1;
-      background: #1f2937;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: 800;
-      color: var(--text);
-      position: relative;
-      transition: background 0.15s, color 0.15s;
-      line-height: 1.1;
-    }
-    .result-mini-tile .rmt-pts  { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1; }
-    .result-mini-tile .rmt-mult { position: absolute; top: 2px; right: 3px; font-size: 8px; font-weight: 700; text-transform: uppercase; }
-    .result-mini-tile.rmt-dl { background: #1e3a5f; }
-    .result-mini-tile.rmt-tl { background: #1a3a2a; }
-    .result-mini-tile.rmt-dw { background: #3d2012; }
-    .result-mini-tile.rmt-tw { background: #3d1212; }
-    .result-mini-tile.rmt-active { background: var(--accent) !important; color: #fff; }
-    .result-mini-tile.rmt-active .rmt-pts { color: rgba(255,255,255,0.7); }
-    .result-mini-tile.rmt-active .rmt-mult { color: rgba(255,255,255,0.7); }
-    .result-mini-tile.rmt-first { background: #c2410c !important; color: #fff; }
+    .result-stats      { font-size: 15px; color: var(--muted); margin-bottom: 24px; }
 
     .result-word-list {
-      max-height: 220px;
+      max-height: 180px;
       overflow-y: auto;
-      margin-bottom: 0;
+      margin-bottom: 20px;
       text-align: left;
       scrollbar-width: thin;
       scrollbar-color: #374151 transparent;
@@ -347,21 +289,9 @@
       border-bottom: 1px solid #1f2937;
       font-size: 14px;
       text-transform: uppercase;
-      cursor: pointer;
-      border-radius: 4px;
     }
     .result-word-row:last-child { border-bottom: none; }
-    .result-word-row:hover { background: #1f2937; }
-    .result-word-row.rw-selected { background: #374151; }
     .result-word-row .rw-pts { color: var(--green); font-weight: 700; }
-
-    /* ── Responsive: stack on small screens ─────────────── */
-    @media (max-width: 480px) {
-      .result-body { flex-direction: column; align-items: stretch; }
-      .result-right { flex-direction: row; justify-content: center; align-items: center; gap: 12px; }
-      .result-mini-tile { width: 50px; font-size: 16px; }
-      .result-mini-tile .rmt-pts { font-size: 10px; }
-    }
 
     .play-btn {
       background: var(--accent);
@@ -666,7 +596,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.61</span>
+      <span class="version-label">v0.53</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -693,20 +623,12 @@
     <div class="result-label">Final Score</div>
     <div class="result-final" id="finalScore">0</div>
     <div class="result-stats"  id="resultStats"></div>
-    <div class="result-body">
-      <div class="result-left">
-        <div class="result-tabs">
-          <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
-          <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
-        </div>
-        <div class="result-word-list" id="resultWordList"></div>
-        <div class="result-word-list vis-hidden" id="missedWordList"></div>
-      </div>
-      <div class="result-right">
-        <div class="result-right-label">Board</div>
-        <div class="result-mini-board" id="resultMiniBoard"></div>
-      </div>
+    <div class="result-tabs">
+      <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
+      <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
     </div>
+    <div class="result-word-list" id="resultWordList"></div>
+    <div class="result-word-list vis-hidden" id="missedWordList"></div>
     <div class="btn-row">
       <button class="play-btn" onclick="newGame()">New Game</button>
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
@@ -787,48 +709,57 @@
     <div class="setting-section">
       <div class="setting-section-title">Swipe Accuracy</div>
       <div class="setting-row">
-        <span class="setting-label">Corner Dead Zone</span>
+        <span class="setting-label">Touch Zone Size</span>
         <p class="setting-desc">
-          Blocks a triangular area at each near corner of horizontal/vertical
-          neighbours so your finger can swing through corners to diagonal tiles
-          without mis-registering. Drag to resize (0 = off).
+          Tiles register only when your finger is near the tile's center.
+          Smaller = more deliberate swipes with fewer accidental tiles;
+          larger = tiles register sooner.
         </p>
         <div class="setting-slider-row">
-          <input type="range" id="cornerGuardSlider" min="0" max="50" step="1" value="25"
-                 oninput="onCornerGuardSlider(this.value)">
-          <span class="setting-slider-val" id="cornerGuardPct">25%</span>
+          <input type="range" id="touchRadiusSlider" min="30" max="50" step="1" value="40"
+                 oninput="onTouchRadiusSlider(this.value)">
+          <span class="setting-slider-val" id="touchRadiusPct">40%</span>
         </div>
       </div>
     </div>
 
-    <!-- ── Board Fixes ────────────────────────────────────── -->
+    <!-- ── Letter Balance ─────────────────────────────────── -->
     <div class="setting-section">
-      <div class="setting-section-title">Board Fixes</div>
-      <div class="setting-toggle-row">
-        <span class="setting-toggle-label">Q without adjacent U fix</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="settingFixQU" checked onchange="onSettingChange()">
-          <span class="toggle-slider"></span>
-        </label>
+      <div class="setting-section-title">Letter Balance</div>
+      <p class="setting-desc" style="margin:0 0 8px">
+        Boards are dealt from a Scrabble-style tile bag and redealt until
+        they satisfy these rules. A board with a Q always includes a U.
+      </p>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Min vowels</span>
+        <input type="number" class="setting-number" id="settingMinVowels"
+               min="0" max="16" value="5" onchange="onSettingChange()">
+      </div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Max vowels</span>
+        <input type="number" class="setting-number" id="settingMaxVowels"
+               min="0" max="16" value="7" onchange="onSettingChange()">
+      </div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Max rare letters (J/Q/X/Z)</span>
+        <input type="number" class="setting-number" id="settingMaxRare"
+               min="0" max="4" value="1" onchange="onSettingChange()">
+      </div>
+      <div class="setting-number-row">
+        <span class="setting-number-label">Max copies of one letter</span>
+        <input type="number" class="setting-number" id="settingMaxDupes"
+               min="1" max="16" value="3" onchange="onSettingChange()">
       </div>
       <div class="setting-toggle-row">
-        <span class="setting-toggle-label">Replace extra J / X / Z</span>
+        <div>
+          <span class="setting-toggle-label">Spread letters evenly</span>
+          <p class="setting-desc" style="margin:2px 0 0">
+            Rearranges tiles to break up vowel/consonant clusters,
+            especially along the edges, and keeps U near Q.
+          </p>
+        </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="settingFixJXZ" checked onchange="onSettingChange()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-toggle-row">
-        <span class="setting-toggle-label">Reduce excess vowels (&gt; 8)</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="settingFixVowels" checked onchange="onSettingChange()">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="setting-toggle-row">
-        <span class="setting-toggle-label">Replace excess same letter (&gt; 4)</span>
-        <label class="toggle-switch">
-          <input type="checkbox" id="settingFixDupeLetter" checked onchange="onSettingChange()">
+          <input type="checkbox" id="settingAntiCluster" checked onchange="onSettingChange()">
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -996,8 +927,8 @@ const LETTER_CONFIG = {
   A:{w:9,s:1}, B:{w:2,s:3}, C:{w:2,s:3}, D:{w:4,s:2}, E:{w:12,s:1},
   F:{w:2,s:4}, G:{w:3,s:2}, H:{w:2,s:4}, I:{w:9,s:1}, J:{w:1,s:8},
   K:{w:1,s:5}, L:{w:4,s:1}, M:{w:2,s:3}, N:{w:6,s:1}, O:{w:8,s:1},
-  P:{w:2,s:3}, Q:{w:0.5,s:10},R:{w:6,s:1}, S:{w:4,s:1}, T:{w:6,s:1},
-  U:{w:4,s:1}, V:{w:2,s:4}, W:{w:2,s:4}, X:{w:0.5,s:8}, Y:{w:1,s:4},
+  P:{w:2,s:3}, Q:{w:1,s:10},R:{w:6,s:1}, S:{w:4,s:1}, T:{w:6,s:1},
+  U:{w:4,s:1}, V:{w:2,s:4}, W:{w:2,s:4}, X:{w:1,s:8}, Y:{w:2,s:4},
   Z:{w:1,s:10}
 };
 
@@ -1176,8 +1107,7 @@ let boardData   = [];
 let selPath     = [];
 let isDragging  = false;
 let gameScore   = 0;
-let foundWords      = new Map();
-let foundWordPaths  = new Map(); // word → tile-index path used when found
+let foundWords  = new Map();
 let timeLeft    = 120;
 let timerHandle = null;
 let gameActive  = false;
@@ -1185,19 +1115,115 @@ let gameActive  = false;
 const $ = id => document.getElementById(id);
 
 // ═══════════════════════════════════════════════════════════
-//  BOARD GENERATION
+//  BOARD GENERATION  — tile bag + composition constraints +
+//  anti-cluster placement.  Every random choice consumes the
+//  seeded `rng` stream in a fixed order, so a given seed always
+//  produces the identical board on any device.
 // ═══════════════════════════════════════════════════════════
-function weightedLetter(exclude = null) {
-  const entries = exclude
-    ? Object.entries(LETTER_CONFIG).filter(([l]) => !exclude.has(l))
-    : Object.entries(LETTER_CONFIG);
-  const total = entries.reduce((s, [, v]) => s + v.w, 0);
-  let r = rng() * total;
-  for (const [l, v] of entries) {
-    r -= v.w;
-    if (r <= 0) return l;
+const VOWELS_LETTERS = new Set(['A','E','I','O','U']);
+const RARE_LETTERS   = new Set(['J','Q','X','Z']);
+
+// The bag holds one entry per physical tile (Scrabble distribution,
+// from LETTER_CONFIG weights: 98 tiles).  Dealing WITHOUT replacement
+// means duplicates are naturally capped by what the bag contains.
+function buildBag() {
+  const bag = [];
+  for (const [l, v] of Object.entries(LETTER_CONFIG))
+    for (let i = 0; i < v.w; i++) bag.push(l);
+  return bag;
+}
+
+// Composition rules a dealt hand of 16 must satisfy.
+// Cheap (nanoseconds) — checked BEFORE the expensive word solver.
+function handSatisfiesConstraints(hand) {
+  const counts = {};
+  let vowels = 0, rare = 0;
+  for (const l of hand) {
+    counts[l] = (counts[l] || 0) + 1;
+    if (VOWELS_LETTERS.has(l)) vowels++;
+    if (RARE_LETTERS.has(l))   rare++;
   }
-  return entries[entries.length - 1][0];
+  if (vowels < settingMinVowels || vowels > settingMaxVowels) return false;
+  if (rare > settingMaxRare) return false;
+  for (const c of Object.values(counts)) if (c > settingMaxDupes) return false;
+  if (counts['Q'] && !counts['U']) return false;   // a Q must bring a U along
+  return true;
+}
+
+// Deal 16 tiles from a fresh bag; redraw until constraints pass.
+// The redraw loop replays identically for the same seed.
+function dealLetters() {
+  let hand = null;
+  for (let t = 0; t < 300; t++) {
+    const bag = buildBag();
+    hand = [];
+    for (let i = 0; i < 16; i++) {          // partial Fisher–Yates draw
+      const j = i + Math.floor(rng() * (bag.length - i));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+      hand.push(bag[i]);
+    }
+    if (handSatisfiesConstraints(hand)) return hand;
+  }
+  return hand;   // constraints unreachable (extreme settings) — use last deal
+}
+
+// ── Anti-cluster placement ───────────────────────────────
+// Penalty for the arrangement — lower is better.  Same-type
+// neighbours (vowel-vowel worst) are penalised, orthogonal
+// contact counts double, and clumps along the border score
+// extra since edge clusters feel worst in play.  A Q with no
+// adjacent U adds a heavy penalty so swaps pull a U next to it.
+function isEdgeCell(i) {
+  const r = i >> 2, c = i & 3;
+  return r === 0 || r === 3 || c === 0 || c === 3;
+}
+
+function clusterScore(letters) {
+  let score = 0;
+  for (let i = 0; i < 16; i++) {
+    const r = i >> 2, c = i & 3;
+    // each adjacent pair visited once: right, down, down-right, down-left
+    const pairs = [[r, c + 1, 2], [r + 1, c, 2], [r + 1, c + 1, 1], [r + 1, c - 1, 1]];
+    for (const [nr, nc, w] of pairs) {
+      if (nr < 0 || nr > 3 || nc < 0 || nc > 3) continue;
+      const j  = nr * 4 + nc;
+      const v1 = VOWELS_LETTERS.has(letters[i]);
+      const v2 = VOWELS_LETTERS.has(letters[j]);
+      let p = 0;
+      if      (v1 && v2)   p = 3;   // vowel clump
+      else if (!v1 && !v2) p = 1;   // consonant clump
+      p *= w;
+      if (p && isEdgeCell(i) && isEdgeCell(j)) p *= 1.5;
+      score += p;
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    if (letters[i] !== 'Q') continue;
+    const qr = i >> 2, qc = i & 3;
+    let hasU = false;
+    for (let dr = -1; dr <= 1 && !hasU; dr++)
+      for (let dc = -1; dc <= 1 && !hasU; dc++) {
+        if (!dr && !dc) continue;
+        const nr = qr + dr, nc = qc + dc;
+        if (nr < 0 || nr > 3 || nc < 0 || nc > 3) continue;
+        if (letters[nr * 4 + nc] === 'U') hasU = true;
+      }
+    if (!hasU) score += 30;
+  }
+  return score;
+}
+
+// Greedy swap pass: try rng-driven position swaps, keep improvements.
+function placeLetters(letters) {
+  let best = clusterScore(letters);
+  for (let t = 0; t < 40; t++) {
+    const a = Math.floor(rng() * 16), b = Math.floor(rng() * 16);
+    if (a === b) continue;
+    [letters[a], letters[b]] = [letters[b], letters[a]];
+    const s = clusterScore(letters);
+    if (s < best) best = s;
+    else [letters[a], letters[b]] = [letters[b], letters[a]];   // revert
+  }
 }
 
 function generateBoard() {
@@ -1213,104 +1239,10 @@ function generateBoard() {
       mults[positions[pos++]] = { type, label, css };
     }
   }
-  const RARE_LETTERS = new Set(['Q', 'X', 'Y', 'Z']);
-  let rarePlaced = false;
-  boardData = Array.from({ length: 16 }, (_, i) => {
-    const l = weightedLetter(rarePlaced ? RARE_LETTERS : null);
-    if (RARE_LETTERS.has(l)) rarePlaced = true;
-    return { letter: l, score: LETTER_CONFIG[l].s, mult: mults[i] };
-  });
-}
-
-// ═══════════════════════════════════════════════════════════
-//  BOARD FIXES  (applied after generateBoard, before quality check)
-//  All random choices use the same `rng` instance that generated
-//  the board, so identical seeds always produce identical results.
-// ═══════════════════════════════════════════════════════════
-const VOWELS_LETTERS  = new Set(['A','E','I','O','U']);
-const HIGH_VAL_LETTERS = new Set(['J','X','Z']);
-
-// Fix 1 — Q without a neighbouring U.
-// If Q exists and none of its ≤8 adjacent tiles is a U,
-// there is a 75 % chance to convert a random adjacent tile to U.
-function fixQWithoutU() {
-  for (let qi = 0; qi < 16; qi++) {
-    if (boardData[qi].letter !== 'Q') continue;
-    const qr  = Math.floor(qi / 4), qc = qi % 4;
-    const adj = [];
-    let hasU  = false;
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (!dr && !dc) continue;
-        const nr = qr + dr, nc = qc + dc;
-        if (nr < 0 || nr > 3 || nc < 0 || nc > 3) continue;
-        const ni = nr * 4 + nc;
-        adj.push(ni);
-        if (boardData[ni].letter === 'U') hasU = true;
-      }
-    }
-    if (!hasU && adj.length > 0 && rng() < 0.75) {
-      const ni = adj[Math.floor(rng() * adj.length)];
-      boardData[ni] = { letter: 'U', score: LETTER_CONFIG['U'].s, mult: boardData[ni].mult };
-    }
-  }
-}
-
-// Fix 2 — More than 2 combined J / X / Z tiles.
-// There is a 75 % chance to replace one of them with a random
-// 4-point or 5-point letter (F H V W K — not J X Z Q).
-function fixExcessiveHighValueLetters() {
-  const hvIdx = boardData.reduce((a, c, i) => { if (HIGH_VAL_LETTERS.has(c.letter)) a.push(i); return a; }, []);
-  if (hvIdx.length <= 2 || rng() >= 0.75) return;
-  const ti    = hvIdx[Math.floor(rng() * hvIdx.length)];
-  const cands = Object.entries(LETTER_CONFIG)
-    .filter(([l, c]) => (c.s === 4 || c.s === 5) && !HIGH_VAL_LETTERS.has(l) && l !== 'Q')
-    .map(([l]) => l);
-  if (!cands.length) return;
-  const nl = cands[Math.floor(rng() * cands.length)];
-  boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
-}
-
-// Fix 3 — More than 8 vowels.
-// Replace a random vowel with a random 1-point consonant (L N R S T).
-function fixExcessiveVowels() {
-  const vIdx = boardData.reduce((a, c, i) => { if (VOWELS_LETTERS.has(c.letter)) a.push(i); return a; }, []);
-  if (vIdx.length <= 8) return;
-  const ti    = vIdx[Math.floor(rng() * vIdx.length)];
-  const cands = Object.entries(LETTER_CONFIG)
-    .filter(([l, c]) => c.s === 1 && !VOWELS_LETTERS.has(l))
-    .map(([l]) => l);
-  if (!cands.length) return;
-  const nl = cands[Math.floor(rng() * cands.length)];
-  boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
-}
-
-// Fix 4 — More than 4 of the same letter.
-// For each over-represented letter, replace one random tile of that letter
-// with a different random letter that has the same point value.
-function fixExcessiveDuplicateLetters() {
-  const counts = {};
-  for (const cell of boardData) counts[cell.letter] = (counts[cell.letter] || 0) + 1;
-  for (const [letter, count] of Object.entries(counts)) {
-    if (count <= 4) continue;
-    const idx   = boardData.reduce((a, c, i) => { if (c.letter === letter) a.push(i); return a; }, []);
-    const ti    = idx[Math.floor(rng() * idx.length)];
-    const score = LETTER_CONFIG[letter].s;
-    const cands = Object.entries(LETTER_CONFIG)
-      .filter(([l, c]) => c.s === score && l !== letter)
-      .map(([l]) => l);
-    if (!cands.length) continue;
-    const nl = cands[Math.floor(rng() * cands.length)];
-    boardData[ti] = { letter: nl, score: LETTER_CONFIG[nl].s, mult: boardData[ti].mult };
-  }
-}
-
-// Run enabled fixes in order (uses global `rng`, deterministic per seed).
-function applyBoardFixes() {
-  if (settingFixQU)         fixQWithoutU();
-  if (settingFixJXZ)        fixExcessiveHighValueLetters();
-  if (settingFixVowels)     fixExcessiveVowels();
-  if (settingFixDupeLetter) fixExcessiveDuplicateLetters();
+  const letters = dealLetters();
+  if (settingAntiCluster) placeLetters(letters);
+  boardData = letters.map((l, i) =>
+    ({ letter: l, score: LETTER_CONFIG[l].s, mult: mults[i] }));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1399,15 +1331,6 @@ function isAdjacent(a, b) {
   const ar = Math.floor(a / 4), ac = a % 4;
   const br = Math.floor(b / 4), bc = b % 4;
   return Math.abs(ar - br) <= 1 && Math.abs(ac - bc) <= 1 && a !== b;
-}
-
-// True only for purely horizontal or vertical neighbours (not diagonal).
-// Used by the corner dead-zone guard in onDragMove.
-function isHVAdjacent(a, b) {
-  const ar = Math.floor(a / 4), ac = a % 4;
-  const br = Math.floor(b / 4), bc = b % 4;
-  return (ar === br && Math.abs(ac - bc) === 1) ||  // same row, next column
-         (ac === bc && Math.abs(ar - br) === 1);    // same column, next row
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1521,7 +1444,6 @@ function submitWord() {
       const diff = newPts - oldPts;
       gameScore += diff;
       foundWords.set(word, newPts);
-      foundWordPaths.set(word, [...selPath]);
       playSound('word_found');
       $('score').textContent = gameScore;
       updateWordInList(word, newPts);
@@ -1539,7 +1461,6 @@ function submitWord() {
   const pts = calcWordScore(selPath);
   gameScore += pts;
   foundWords.set(word, pts);
-  foundWordPaths.set(word, [...selPath]);
   playSound('word_found');
 
   $('score').textContent = gameScore;
@@ -1641,10 +1562,38 @@ function tileFromPoint(x, y) {
   return parseInt(tile.dataset.index);
 }
 
+// ── Center-proximity detection ───────────────────────────
+// During a drag, a tile only registers when the finger is within
+// a circular zone around the tile's CENTER (radius = touchRadiusFrac
+// × tile size).  The gaps between zones — especially at the 4-corner
+// junctions — mean a finger swinging toward a diagonal tile never
+// gets close enough to a straight neighbour's center to register it,
+// yet every tile stays reachable by simply moving toward its center.
+let tileCenters = [];   // cached at drag start (board doesn't move mid-drag)
+
+function cacheTileCenters() {
+  tileCenters = [...$('board').querySelectorAll('.tile')].map(t => {
+    const r = t.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2,
+             size: Math.min(r.width, r.height) };
+  });
+}
+
+function tileFromCenter(x, y) {
+  let best = -1, bestD = Infinity;
+  for (let i = 0; i < tileCenters.length; i++) {
+    const d = Math.hypot(x - tileCenters[i].x, y - tileCenters[i].y);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  if (best < 0) return null;
+  return bestD <= tileCenters[best].size * touchRadiusFrac ? best : null;
+}
+
 function onDragStart(x, y) {
   if (!gameActive) return;
-  const idx = tileFromPoint(x, y);
+  const idx = tileFromPoint(x, y);   // starting tile: full-tile hit, forgiving
   if (idx === null || idx === undefined) return;
+  cacheTileCenters();
   isDragging = true;
   selPath    = [idx];
   playTick();                  // selPath.length === 1 → tick1
@@ -1654,7 +1603,7 @@ function onDragStart(x, y) {
 
 function onDragMove(x, y) {
   if (!isDragging || !gameActive) return;
-  const idx  = tileFromPoint(x, y);
+  const idx  = tileFromCenter(x, y);   // registers only near a tile's center
   if (idx === null || idx === undefined) return;
 
   const last = selPath[selPath.length - 1];
@@ -1670,41 +1619,6 @@ function onDragMove(x, y) {
 
   if (selPath.includes(idx))      return;
   if (!isAdjacent(last, idx))     return;
-
-  // Corner dead-zone guard ─────────────────────────────────
-  // For straight (H or V) neighbours only: block the move if the touch
-  // falls inside a triangular corner zone of the candidate tile.
-  // The triangle sits at whichever two corners are closest to the current
-  // tile, defined by: (distAlongEdge1) + (distAlongEdge2) < D
-  // where D = cornerGuardFrac × tileSize.  This lets the finger swing
-  // through a corner toward a diagonal tile without mis-registering the
-  // straight neighbour.
-  if (isHVAdjacent(last, idx) && cornerGuardFrac > 0) {
-    const tileEl = $('board').querySelectorAll('.tile')[idx];
-    if (tileEl) {
-      const r        = tileEl.getBoundingClientRect();
-      const D        = cornerGuardFrac * Math.min(r.width, r.height);
-      const lastRow  = Math.floor(last / 4), lastCol = last % 4;
-      const idxRow   = Math.floor(idx  / 4), idxCol  = idx  % 4;
-      let blocked    = false;
-
-      if      (idxCol > lastCol) { // neighbour is to the right  → guard left corners of B
-        if ((x - r.left) + (y - r.top)    < D) blocked = true;
-        if ((x - r.left) + (r.bottom - y) < D) blocked = true;
-      } else if (idxCol < lastCol) { // neighbour is to the left → guard right corners of B
-        if ((r.right - x) + (y - r.top)    < D) blocked = true;
-        if ((r.right - x) + (r.bottom - y) < D) blocked = true;
-      } else if (idxRow > lastRow) { // neighbour is below       → guard top corners of B
-        if ((x - r.left)  + (y - r.top) < D) blocked = true;
-        if ((r.right - x) + (y - r.top) < D) blocked = true;
-      } else {                       // neighbour is above       → guard bottom corners of B
-        if ((x - r.left)  + (r.bottom - y) < D) blocked = true;
-        if ((r.right - x) + (r.bottom - y) < D) blocked = true;
-      }
-
-      if (blocked) return;
-    }
-  }
 
   selPath.push(idx);
   playTick();                  // selPath.length reflects the newly added tile
@@ -1781,9 +1695,8 @@ function newGame() {
 function beginGame(seed) {
   currentSeed = seed;
   selPath     = [];
-  gameScore       = 0;
-  foundWords      = new Map();
-  foundWordPaths  = new Map();
+  gameScore   = 0;
+  foundWords  = new Map();
   timeLeft    = settingGameTime;
   gameActive  = true;
 
@@ -1803,14 +1716,15 @@ function beginGame(seed) {
 let QUALITY_MIN_WORDS   = 40;    // min Word10K matches on board
 let QUALITY_MIN_TOP_PTS = 100;   // score threshold for "top" words
 let QUALITY_TOP_COUNT   = 2;     // need at least this many top words
-let QUALITY_MAX_TRIES   = 10000;  // default tries per run
+let QUALITY_MAX_TRIES   = 1000;  // default tries per run
 const QUALITY_SEED_STEP = 1_000_000;
 
 // ── User-adjustable settings ─────────────────────────────
-let settingFixQU          = true;   // Q-without-U board fix
-let settingFixJXZ         = true;   // excess J/X/Z board fix
-let settingFixVowels      = true;   // excess vowels board fix
-let settingFixDupeLetter  = true;   // excess same-letter board fix
+let settingMinVowels      = 5;      // letter balance: min vowels in the 16
+let settingMaxVowels      = 7;      // letter balance: max vowels in the 16
+let settingMaxRare        = 1;      // letter balance: max J/Q/X/Z combined
+let settingMaxDupes       = 3;      // letter balance: max copies of one letter
+let settingAntiCluster    = true;   // spread vowels/consonants evenly
 let settingGameTime       = 120;    // game duration in seconds
 let settingColorCorrect   = true;   // show green tiles when word is valid
 
@@ -1854,8 +1768,7 @@ function findQualityBoard(baseSeed, startAttempt = 0, maxTries = QUALITY_MAX_TRI
     const trySeed = baseSeed + attempt * QUALITY_SEED_STEP;
     currentSeed      = trySeed;
     rng              = makePRNG(trySeed);
-    generateBoard();
-    applyBoardFixes();           // Q/U fix, J/X/Z fix, vowel fix — uses same rng
+    generateBoard();             // bag deal + constraints + placement, all seeded
     allPossibleWords = findAllWords();
 
     if (boardMeetsQuality(allPossibleWords)) {
@@ -1916,7 +1829,7 @@ function endGame() {
   // Found words — sorted by score descending
   const sorted = [...foundWords.entries()].sort((a, b) => b[1] - a[1]);
   $('resultWordList').innerHTML = sorted.map(([w, p]) =>
-    `<div class="result-word-row" onclick="onResultWordClick('${w}','found')" data-word="${w}"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
+    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
   ).join('');
 
   // Missed words — valid words the player never found, sorted by score descending
@@ -1924,13 +1837,12 @@ function endGame() {
     .filter(([w]) => !foundWords.has(w))
     .sort((a, b) => b[1] - a[1]);
   $('missedWordList').innerHTML = missed.map(([w, p]) =>
-    `<div class="result-word-row" onclick="onResultWordClick('${w}','missed')" data-word="${w}"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
+    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
   ).join('');
 
   // Tab labels
   $('foundCount').textContent  = count;
   $('missedCount').textContent = missed.length;
-  renderResultMiniBoard();
   showResultTab('found');      // always open on Found tab
 
   $('overlay').classList.remove('hidden');
@@ -1942,67 +1854,6 @@ function showResultTab(tab) {
   $('tabMissed').classList.toggle('active', !onFound);
   $('resultWordList').classList.toggle('vis-hidden',  !onFound);
   $('missedWordList').classList.toggle('vis-hidden',   onFound);
-  highlightResultMiniBoard(null);
-}
-
-function renderResultMiniBoard() {
-  const container = $('resultMiniBoard');
-  container.innerHTML = '';
-  for (let i = 0; i < 16; i++) {
-    const cell = boardData[i];
-    const div  = document.createElement('div');
-    div.className    = 'result-mini-tile';
-    div.dataset.index = i;
-    if (cell.mult) div.classList.add('rmt-' + cell.mult.css);
-    let inner = `<span>${cell.letter}</span><span class="rmt-pts">${cell.score}</span>`;
-    if (cell.mult) inner += `<span class="rmt-mult">${cell.mult.label}</span>`;
-    div.innerHTML = inner;
-    container.appendChild(div);
-  }
-}
-
-function highlightResultMiniBoard(path) {
-  const tiles = $('resultMiniBoard').querySelectorAll('.result-mini-tile');
-  tiles.forEach(t => t.classList.remove('rmt-active', 'rmt-first'));
-  if (!path) return;
-  path.forEach((idx, i) => {
-    tiles[idx].classList.add('rmt-active');
-    if (i === 0) tiles[idx].classList.add('rmt-first');
-  });
-}
-
-function findWordPath(word) {
-  const letters = word.toLowerCase();
-  function dfs(idx, depth, visited) {
-    if (boardData[idx].letter.toLowerCase() !== letters[depth]) return null;
-    const path = [...visited, idx];
-    if (depth === letters.length - 1) return path;
-    for (let next = 0; next < 16; next++) {
-      if (!path.includes(next) && isAdjacent(idx, next)) {
-        const result = dfs(next, depth + 1, path);
-        if (result) return result;
-      }
-    }
-    return null;
-  }
-  for (let start = 0; start < 16; start++) {
-    const result = dfs(start, 0, []);
-    if (result) return result;
-  }
-  return null;
-}
-
-function onResultWordClick(word, tab) {
-  // Clear previous selection highlight
-  const allRows = $('overlay').querySelectorAll('.result-word-row');
-  allRows.forEach(r => r.classList.remove('rw-selected'));
-  const clicked = $('overlay').querySelector(`.result-word-row[data-word="${word}"]`);
-  if (clicked) clicked.classList.add('rw-selected');
-
-  const path = tab === 'found'
-    ? foundWordPaths.get(word)
-    : findWordPath(word);
-  highlightResultMiniBoard(path || null);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2015,7 +1866,9 @@ window.addEventListener('resize', resizeCanvas);
 // ═══════════════════════════════════════════════════════════
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => reg.update().catch(() => {}))   // check for a new version every launch
+      .catch(() => {});
   });
 }
 
@@ -2023,15 +1876,16 @@ if ('serviceWorker' in navigator) {
 //  SETTINGS
 // ═══════════════════════════════════════════════════════════
 
-// Fraction of tile size used as the corner dead-zone triangle.
-// 0 = disabled; 0.25 = 25 % of the shorter tile dimension.
-let cornerGuardFrac = 0.25;
+// Radius of the circular touch zone around each tile center,
+// as a fraction of tile size.  0.40 = finger must be within 40 %
+// of the tile's size from its center for the tile to register.
+let touchRadiusFrac = 0.40;
 let _settingsPaused = false;
 
-// Apply a raw slider value (0–50) to the live variable + UI label
-function onCornerGuardSlider(val) {
-  cornerGuardFrac = parseInt(val, 10) / 100;
-  $('cornerGuardPct').textContent = val + '%';
+// Apply a raw slider value (30–50) to the live variable + UI label
+function onTouchRadiusSlider(val) {
+  touchRadiusFrac = parseInt(val, 10) / 100;
+  $('touchRadiusPct').textContent = val + '%';
   saveSettings();
 }
 
@@ -2069,7 +1923,7 @@ function onBoardGateChange() {
   const minWords  = Math.max(1,  parseInt($('settingMinWords').value)       || 40);
   const topCount  = Math.max(0,  parseInt($('settingTopCount').value)       || 2);
   const topPts    = Math.max(10, parseInt($('settingTopPts').value)         || 100);
-  const maxTries  = Math.max(1,  parseInt($('settingMaxTries').value)       || 10000);
+  const maxTries  = Math.max(1,  parseInt($('settingMaxTries').value)       || 1000);
   const fullMin   = Math.max(1,  parseInt($('settingFullMinWords').value)   || 100);
   const fullTopCt = Math.max(0,  parseInt($('settingFullTopCount').value)   || 2);
   const fullTopPt = Math.max(10, parseInt($('settingFullTopPts').value)     || 150);
@@ -2097,10 +1951,27 @@ function onBoardGateChange() {
 
 // Called whenever any setting control changes — syncs JS vars + persists
 function onSettingChange() {
-  settingFixQU          = $('settingFixQU').checked;
-  settingFixJXZ         = $('settingFixJXZ').checked;
-  settingFixVowels      = $('settingFixVowels').checked;
-  settingFixDupeLetter  = $('settingFixDupeLetter').checked;
+  let minV = Math.min(16, Math.max(0, parseInt($('settingMinVowels').value) ?? 5));
+  let maxV = Math.min(16, Math.max(0, parseInt($('settingMaxVowels').value) ?? 7));
+  if (isNaN(minV)) minV = 5;
+  if (isNaN(maxV)) maxV = 7;
+  if (maxV < minV) maxV = minV;              // keep the range sane
+  $('settingMinVowels').value = minV;
+  $('settingMaxVowels').value = maxV;
+  settingMinVowels = minV;
+  settingMaxVowels = maxV;
+
+  let maxR = parseInt($('settingMaxRare').value);
+  if (isNaN(maxR)) maxR = 1;
+  settingMaxRare = Math.min(4, Math.max(0, maxR));
+  $('settingMaxRare').value = settingMaxRare;
+
+  let maxD = parseInt($('settingMaxDupes').value);
+  if (isNaN(maxD)) maxD = 3;
+  settingMaxDupes = Math.min(16, Math.max(1, maxD));
+  $('settingMaxDupes').value = settingMaxDupes;
+
+  settingAntiCluster  = $('settingAntiCluster').checked;
   settingColorCorrect = $('settingColorCorrect').checked;
 
   const gameTime = Math.max(30,  parseInt($('settingGameTime').value)  || 120);
@@ -2112,11 +1983,12 @@ function onSettingChange() {
 
 function saveSettings() {
   localStorage.setItem('wordswipe_settings', JSON.stringify({
-    cornerGuard:   Math.round(cornerGuardFrac * 100),
-    fixQU:              settingFixQU,
-    fixJXZ:             settingFixJXZ,
-    fixVowels:          settingFixVowels,
-    fixDupeLetter:      settingFixDupeLetter,
+    touchRadius:   Math.round(touchRadiusFrac * 100),
+    minVowels:          settingMinVowels,
+    maxVowels:          settingMaxVowels,
+    maxRare:            settingMaxRare,
+    maxDupes:           settingMaxDupes,
+    antiCluster:        settingAntiCluster,
     minWords:           QUALITY_MIN_WORDS,
     topCount:           QUALITY_TOP_COUNT,
     topPts:             QUALITY_MIN_TOP_PTS,
@@ -2138,16 +2010,17 @@ function saveSettings() {
     if (!raw) return;
     const s = JSON.parse(raw);
 
-    if (s.cornerGuard != null) {
-      const cg = s.cornerGuard;
-      $('cornerGuardSlider').value    = cg;
-      $('cornerGuardPct').textContent = cg + '%';
-      cornerGuardFrac = cg / 100;
+    if (s.touchRadius != null) {
+      const tr = Math.min(50, Math.max(30, s.touchRadius));
+      $('touchRadiusSlider').value    = tr;
+      $('touchRadiusPct').textContent = tr + '%';
+      touchRadiusFrac = tr / 100;
     }
-    if (s.fixQU         != null) { settingFixQU         = Boolean(s.fixQU);         $('settingFixQU').checked         = settingFixQU;         }
-    if (s.fixJXZ        != null) { settingFixJXZ        = Boolean(s.fixJXZ);        $('settingFixJXZ').checked        = settingFixJXZ;        }
-    if (s.fixVowels     != null) { settingFixVowels     = Boolean(s.fixVowels);     $('settingFixVowels').checked     = settingFixVowels;     }
-    if (s.fixDupeLetter != null) { settingFixDupeLetter = Boolean(s.fixDupeLetter); $('settingFixDupeLetter').checked = settingFixDupeLetter; }
+    if (s.minVowels   != null) { settingMinVowels   = s.minVowels;   $('settingMinVowels').value   = s.minVowels;   }
+    if (s.maxVowels   != null) { settingMaxVowels   = s.maxVowels;   $('settingMaxVowels').value   = s.maxVowels;   }
+    if (s.maxRare     != null) { settingMaxRare     = s.maxRare;     $('settingMaxRare').value     = s.maxRare;     }
+    if (s.maxDupes    != null) { settingMaxDupes    = s.maxDupes;    $('settingMaxDupes').value    = s.maxDupes;    }
+    if (s.antiCluster != null) { settingAntiCluster = Boolean(s.antiCluster); $('settingAntiCluster').checked = settingAntiCluster; }
     if (s.minWords  != null) { QUALITY_MIN_WORDS   = s.minWords;  $('settingMinWords').value = s.minWords;  }
     if (s.topCount  != null) { QUALITY_TOP_COUNT   = s.topCount;  $('settingTopCount').value = s.topCount;  }
     if (s.topPts    != null) { QUALITY_MIN_TOP_PTS = s.topPts;    $('settingTopPts').value   = s.topPts;    }
@@ -2238,7 +2111,7 @@ Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
         <div class="setting-number-row">
           <span class="setting-number-label">Max board search tries</span>
           <input type="number" class="setting-number" id="settingMaxTries"
-                 min="1" max="100000" value="10000" onchange="onBoardGateChange()">
+                 min="1" max="10000" value="1000" onchange="onBoardGateChange()">
         </div>
       </div>
 
