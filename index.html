@@ -646,7 +646,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.56</span>
+      <span class="version-label">v0.57</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1679,7 +1679,7 @@ function clearSelection() {
   selPath    = [];
   isDragging = false;
   const tiles = $('board').querySelectorAll('.tile');
-  tiles.forEach(t => t.classList.remove('selected', 'valid-word'));
+  tiles.forEach(t => t.classList.remove('selected', 'valid-word', 'dup-word'));
   const canvas = $('path-canvas');
   canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   $('wordText').textContent  = '';
