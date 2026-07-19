@@ -145,6 +145,9 @@
       overflow: hidden;
       position: relative;
     }
+    /* Mirrors the layout so the score sits left of the word */
+    .word-display.score-left { flex-direction: row-reverse; }
+
     .word-text {
       font-size: 26px;
       font-weight: 800;
@@ -646,12 +649,12 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.57</span>
+      <span class="version-label">v0.59</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
 
-  <div class="word-display">
+  <div class="word-display" id="wordDisplay">
     <span class="word-text neutral" id="wordText"></span>
     <span class="word-score" id="wordScore"></span>
   </div>
@@ -802,6 +805,19 @@
         <span class="setting-number-label">Time limit (seconds)</span>
         <input type="number" class="setting-number" id="settingGameTime"
                min="30" max="600" value="120" onchange="onSettingChange()">
+      </div>
+      <div class="setting-toggle-row">
+        <div>
+          <span class="setting-toggle-label">Show Score on Left</span>
+          <p class="setting-desc" style="margin:2px 0 0">
+            Shows the running word score to the left of the word
+            instead of the right.
+          </p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingScoreLeft" onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
       <div class="setting-toggle-row">
         <div>
@@ -1069,7 +1085,9 @@ function isNewHighScore(score) {
 
 function saveHighScore(score, seed) {
   const hs = loadHighScores();
-  hs.push({ score, seed: String(seed).padStart(6, '0') });
+  const entry = { score, seed: String(seed).padStart(6, '0') };
+  if (!isDefaultScoring()) entry.ns = 1;   // flag non-standard scoring
+  hs.push(entry);
   hs.sort((a, b) => b.score - a.score);
   hs.splice(HS_MAX);
   localStorage.setItem(HS_KEY, JSON.stringify(hs));
@@ -1089,14 +1107,16 @@ function showHighScores(newEntry) {
       return `<tr class="${isNew ? 'hs-new' : ''}">
         <td>${i + 1}.</td>
         <td>${entry.seed}</td>
-        <td>${entry.score.toLocaleString()}</td>
+        <td>${entry.score.toLocaleString()}${entry.ns ? '<span style="color:var(--muted)">*</span>' : ''}</td>
       </tr>`;
     }).join('');
+    const hasNS = hs.some(e => e.ns);
     content.innerHTML = `
       <table class="hs-table">
         <thead><tr><th>#</th><th>Seed</th><th>Score</th></tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table>
+      ${hasNS ? '<p class="setting-desc" style="margin:8px 0 0;text-align:center">* played with non-standard scoring</p>' : ''}`;
   }
   $('overlay').classList.add('hidden');
   $('hsOverlay').classList.remove('hidden');
@@ -1179,10 +1199,29 @@ function computeBoardPotential() {
   return Math.round(pot);
 }
 
+// Compact signature of the settings that change scoring.  Par and
+// score statistics only use games recorded under the SAME signature;
+// word-count stats (find rates) use every game regardless.
+function scoringSignature() {
+  return [settingStdMults ? 1 : 0, settingLenPct, settingLenBase, settingGenMult,
+          settingGameTime].join('|');
+}
+
+function isDefaultScoring() {
+  return settingStdMults && settingLenPct === 100 && settingGenMult === 1 &&
+         settingGameTime === 120;
+}
+
+// Games recorded under the currently selected scoring options
+function matchingGames(pl) {
+  const sig = scoringSignature();
+  return pl ? pl.games.filter(g => g.sig === sig) : [];
+}
+
 // Golf-style handicap ratio for a player (1 = average player)
 function playerRatio(pl) {
-  if (!pl || !pl.games.length) return 1;
-  const ratios = pl.games.slice(-20)
+  if (!pl) return 1;
+  const ratios = matchingGames(pl).slice(-20)
     .filter(g => g.potential > 0)
     .map(g => g.score / g.potential);
   if (!ratios.length) return 1;
@@ -1217,6 +1256,7 @@ function recordGameForPlayer() {
     t: Date.now(), seed: currentSeed, score: gameScore,
     potential: boardPotential, par: currentParValue,
     byLen, common, obscure,
+    sig: scoringSignature(), time: settingGameTime,
   });
   if (pl.games.length > GAME_HISTORY_MAX)
     pl.games.splice(0, pl.games.length - GAME_HISTORY_MAX);
@@ -1901,6 +1941,7 @@ let settingMaxDupes       = 3;      // letter balance: max copies of one letter
 let settingAntiCluster    = true;   // spread vowels/consonants evenly
 let settingGameTime       = 120;    // game duration in seconds
 let settingColorCorrect   = true;   // show green tiles when word is valid
+let settingScoreLeft      = false;  // word score left of the word instead of right
 
 // Scoring options
 let settingStdMults       = true;   // apply DL/TL/DW/TW tiles
@@ -2196,20 +2237,37 @@ function onPlayerImportFile(e) {
   reader.readAsText(file);
 }
 
-// Readable stats summary for the edit modal
+// Readable stats summary for the edit modal.
+// Score-based stats use only games played under the CURRENT scoring
+// options; word-count stats (find rates, rare words) use every game.
 function renderPlayerStats(pl) {
   const g = pl.games;
   if (!g.length) return '<p class="setting-desc" style="margin:0">No games recorded yet. Finish a game while this player is selected and stats will appear here.</p>';
 
-  const avg   = Math.round(g.reduce((a, b) => a + b.score, 0) / g.length);
-  const best  = Math.max(...g.map(x => x.score));
-  const ratio = playerRatio(pl);
-  const vsPar = g.filter(x => x.par > 0);
-  const avgVsPar = vsPar.length
-    ? Math.round(vsPar.reduce((a, b) => a + (b.score - b.par), 0) / vsPar.length)
-    : 0;
+  const m = matchingGames(pl);
+  let scoreRows;
+  if (m.length) {
+    const avg   = Math.round(m.reduce((a, b) => a + b.score, 0) / m.length);
+    const best  = Math.max(...m.map(x => x.score));
+    const ratio = playerRatio(pl);
+    const vsPar = m.filter(x => x.par > 0);
+    const avgVsPar = vsPar.length
+      ? Math.round(vsPar.reduce((a, b) => a + (b.score - b.par), 0) / vsPar.length)
+      : 0;
+    scoreRows = `
+      <tr><td>Games (these settings)</td><td colspan="2">${m.length} of ${g.length}</td></tr>
+      <tr><td>Average score</td><td colspan="2">${avg.toLocaleString()}</td></tr>
+      <tr><td>Best score</td><td colspan="2">${best.toLocaleString()}</td></tr>
+      <tr><td>Avg vs par</td><td colspan="2">${avgVsPar >= 0 ? '+' : ''}${avgVsPar}</td></tr>
+      <tr><td>Skill factor</td><td colspan="2">${Math.round(ratio * 100)}% of average</td></tr>`;
+  } else {
+    scoreRows = `
+      <tr><td>Games (these settings)</td><td colspan="2">0 of ${g.length}</td></tr>
+      <tr><td colspan="3" style="text-align:left;color:var(--muted)">No games under the current
+        scoring options yet — score stats and par start fresh for these settings.</td></tr>`;
+  }
 
-  // Aggregate find-rate by word length across all recorded games
+  // Aggregate find-rate by word length across ALL recorded games
   const agg = {};
   for (const game of g) {
     for (const [L, fa] of Object.entries(game.byLen || {})) {
@@ -2229,14 +2287,10 @@ function renderPlayerStats(pl) {
 
   return `
     <table class="player-stats-table">
-      <tr><td>Games played</td><td colspan="2">${g.length}</td></tr>
-      <tr><td>Average score</td><td colspan="2">${avg.toLocaleString()}</td></tr>
-      <tr><td>Best score</td><td colspan="2">${best.toLocaleString()}</td></tr>
-      <tr><td>Avg vs par</td><td colspan="2">${avgVsPar >= 0 ? '+' : ''}${avgVsPar}</td></tr>
-      <tr><td>Skill factor</td><td colspan="2">${Math.round(ratio * 100)}% of average</td></tr>
+      ${scoreRows}
       <tr><td>Rare words found</td><td colspan="2">${totObscure} (vs ${totCommon} common)</td></tr>
     </table>
-    <div class="setting-section-title" style="margin-top:8px">Words Found by Length</div>
+    <div class="setting-section-title" style="margin-top:8px">Words Found by Length (all games)</div>
     <table class="player-stats-table">
       <tr><th>Length</th><th>Found</th><th>Rate</th></tr>
       ${lenRows}
@@ -2337,6 +2391,8 @@ function onSettingChange() {
 
   settingAntiCluster  = $('settingAntiCluster').checked;
   settingColorCorrect = $('settingColorCorrect').checked;
+  settingScoreLeft    = $('settingScoreLeft').checked;
+  $('wordDisplay').classList.toggle('score-left', settingScoreLeft);
 
   const gameTime = Math.max(30,  parseInt($('settingGameTime').value)  || 120);
   $('settingGameTime').value = gameTime;
@@ -2391,7 +2447,7 @@ function importSettings() { $('importFileInput').click(); }
 
 const KNOWN_SETTING_KEYS = [
   'touchRadius', 'minVowels', 'maxVowels', 'maxRare', 'maxDupes', 'antiCluster',
-  'minWords', 'topCount', 'topPts', 'maxTries', 'gameTime', 'colorCorrect',
+  'minWords', 'topCount', 'topPts', 'maxTries', 'gameTime', 'colorCorrect', 'scoreLeft',
   'stdMults', 'lenPct', 'lenBase', 'genMult',
   'fullMinEnabled', 'fullMinWords', 'fullTopEnabled', 'fullTopCount', 'fullTopPts',
 ];
@@ -2432,6 +2488,7 @@ function saveSettings() {
     maxTries:           QUALITY_MAX_TRIES,
     gameTime:           settingGameTime,
     colorCorrect:       settingColorCorrect,
+    scoreLeft:          settingScoreLeft,
     stdMults:           settingStdMults,
     lenPct:             settingLenPct,
     lenBase:            settingLenBase,
@@ -2468,6 +2525,8 @@ function saveSettings() {
     if (s.maxTries      != null) { QUALITY_MAX_TRIES        = s.maxTries;      $('settingMaxTries').value             = s.maxTries;      }
     if (s.gameTime      != null) { settingGameTime           = s.gameTime;      $('settingGameTime').value             = s.gameTime;      }
     if (s.colorCorrect  != null) { settingColorCorrect       = Boolean(s.colorCorrect);  $('settingColorCorrect').checked       = settingColorCorrect;       }
+    if (s.scoreLeft     != null) { settingScoreLeft          = Boolean(s.scoreLeft);     $('settingScoreLeft').checked          = settingScoreLeft;
+                                   $('wordDisplay').classList.toggle('score-left', settingScoreLeft); }
     if (s.stdMults != null) { settingStdMults = Boolean(s.stdMults); $('settingStdMults').checked = settingStdMults; }
     if (s.lenPct   != null) { settingLenPct   = s.lenPct;   $('settingLenPct').value   = s.lenPct;   }
     if (s.lenBase  != null) { settingLenBase  = s.lenBase;  $('settingLenBase').value  = s.lenBase;  }
