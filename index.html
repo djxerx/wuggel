@@ -310,7 +310,7 @@
       border-radius: 24px;
       padding: 36px 32px;
       text-align: center;
-      width: min(340px, 90vw);
+      width: min(480px, 92vw);
       animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     @keyframes pop-in {
@@ -324,13 +324,21 @@
     .result-stats      { font-size: 15px; color: var(--muted); margin-bottom: 24px; }
 
     .result-word-list {
-      max-height: 180px;
+      max-height: 280px;   /* ≥ 8 rows in view */
       overflow-y: auto;
       margin-bottom: 20px;
       text-align: left;
       scrollbar-width: thin;
       scrollbar-color: #374151 transparent;
     }
+
+    /* Word list on the left, mini board on the right */
+    .result-body {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .result-list-col { flex: 1; min-width: 0; }
     .result-word-row {
       display: flex;
       justify-content: space-between;
@@ -338,9 +346,63 @@
       border-bottom: 1px solid #1f2937;
       font-size: 14px;
       text-transform: uppercase;
+      cursor: pointer;
     }
     .result-word-row:last-child { border-bottom: none; }
     .result-word-row .rw-pts { color: var(--green); font-weight: 700; }
+    .result-word-row.sel { background: #1f2937; border-radius: 6px; }
+
+    /* Sortable column headers above the word lists */
+    .result-sort-head {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px 2px;
+    }
+    .rs-col {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+    .rs-col.active { color: #e5e7eb; }
+
+    /* Mini board showing the path for a tapped word */
+    .mini-board-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 28px;   /* aligns below the sort-header row */
+      flex-shrink: 0;
+    }
+    .mini-board {
+      display: grid;
+      grid-template-columns: repeat(4, 34px);
+      grid-auto-rows: 34px;
+      gap: 3px;
+    }
+    .mini-tile {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1f2937;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #6b7280;
+    }
+    .mini-tile.on { background: var(--green); color: #06281c; }
+    .mini-seq {
+      position: absolute;
+      top: 1px;
+      right: 3px;
+      font-size: 9px;
+      font-weight: 800;
+    }
 
     .play-btn {
       background: var(--accent);
@@ -649,7 +711,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.59</span>
+      <span class="version-label">v0.61</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -680,8 +742,19 @@
       <button class="result-tab active" id="tabFound"  onclick="showResultTab('found')">Found&nbsp;(<span id="foundCount">0</span>)</button>
       <button class="result-tab"        id="tabMissed" onclick="showResultTab('missed')">Missed&nbsp;(<span id="missedCount">0</span>)</button>
     </div>
-    <div class="result-word-list" id="resultWordList"></div>
-    <div class="result-word-list vis-hidden" id="missedWordList"></div>
+    <div class="result-body">
+      <div class="result-list-col">
+        <div class="result-sort-head">
+          <button class="rs-col" id="sortByWord"  onclick="setResultSort('word')">Word ▲</button>
+          <button class="rs-col active" id="sortByScore" onclick="setResultSort('score')">Score ▼</button>
+        </div>
+        <div class="result-word-list" id="resultWordList"></div>
+        <div class="result-word-list vis-hidden" id="missedWordList"></div>
+      </div>
+      <div class="mini-board-wrap vis-hidden" id="miniBoardWrap">
+        <div class="mini-board" id="miniBoard"></div>
+      </div>
+    </div>
     <div class="btn-row">
       <button class="play-btn" onclick="newGame()">New Game</button>
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
@@ -2055,23 +2128,15 @@ function endGame() {
   $('resultStats').textContent =
     `Seed ${String(currentSeed).padStart(6, '0')} · ${count} of ${allPossibleWords.size} words · max ${maxPts.toLocaleString()} pts${parTxt}`;
 
-  // Found words — sorted by score descending
-  const sorted = [...foundWords.entries()].sort((a, b) => b[1] - a[1]);
-  $('resultWordList').innerHTML = sorted.map(([w, p]) =>
-    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
-  ).join('');
-
-  // Missed words — valid words the player never found, sorted by score descending
-  const missed = [...allPossibleWords.entries()]
-    .filter(([w]) => !foundWords.has(w))
-    .sort((a, b) => b[1] - a[1]);
-  $('missedWordList').innerHTML = missed.map(([w, p]) =>
-    `<div class="result-word-row"><span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span></div>`
-  ).join('');
+  // Word lists — score-descending by default, tap a row for its path
+  resultSort         = 'score';
+  selectedResultWord = null;
+  renderMiniBoard();
+  renderResultLists();
 
   // Tab labels
   $('foundCount').textContent  = count;
-  $('missedCount').textContent = missed.length;
+  $('missedCount').textContent = allPossibleWords.size - count;
   showResultTab('found');      // always open on Found tab
 
   $('overlay').classList.remove('hidden');
@@ -2083,6 +2148,62 @@ function showResultTab(tab) {
   $('tabMissed').classList.toggle('active', !onFound);
   $('resultWordList').classList.toggle('vis-hidden',  !onFound);
   $('missedWordList').classList.toggle('vis-hidden',   onFound);
+}
+
+// ── Result word lists: sorting + mini-board path preview ──
+let resultSort         = 'score';   // 'score' (desc, default) or 'word' (asc)
+let selectedResultWord = null;      // word whose path is shown on the mini board
+
+function renderResultLists() {
+  const sortFn = resultSort === 'word'
+    ? (a, b) => a[0].localeCompare(b[0])
+    : (a, b) => b[1] - a[1];
+
+  const row = ([w, p]) =>
+    `<div class="result-word-row ${selectedResultWord === w ? 'sel' : ''}"
+          onclick="toggleWordPath('${w}')">
+       <span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span>
+     </div>`;
+
+  const foundArr = [...foundWords.entries()].sort(sortFn);
+  const missedArr = [...allPossibleWords.entries()]
+    .filter(([w]) => !foundWords.has(w))
+    .sort(sortFn);
+
+  $('resultWordList').innerHTML = foundArr.map(row).join('');
+  $('missedWordList').innerHTML = missedArr.map(row).join('');
+  $('sortByWord').classList.toggle('active',  resultSort === 'word');
+  $('sortByScore').classList.toggle('active', resultSort === 'score');
+}
+
+function setResultSort(key) {
+  resultSort = key;
+  renderResultLists();
+}
+
+// Tap a word row → highlight its best path on a mini board (tap again to hide)
+function toggleWordPath(w) {
+  selectedResultWord = selectedResultWord === w ? null : w;
+  renderMiniBoard();
+  renderResultLists();
+}
+
+function renderMiniBoard() {
+  const wrap = $('miniBoardWrap');
+  if (!selectedResultWord || !allWordPaths.has(selectedResultWord)) {
+    wrap.classList.add('vis-hidden');
+    return;
+  }
+  const path  = allWordPaths.get(selectedResultWord);
+  const order = new Map(path.map((tile, i) => [tile, i + 1]));
+  let html = '';
+  for (let i = 0; i < 16; i++) {
+    const seq = order.get(i);
+    html += `<div class="mini-tile ${seq ? 'on' : ''}">${boardData[i].letter}${
+      seq ? `<span class="mini-seq">${seq}</span>` : ''}</div>`;
+  }
+  $('miniBoard').innerHTML = html;
+  wrap.classList.remove('vis-hidden');
 }
 
 // ═══════════════════════════════════════════════════════════
