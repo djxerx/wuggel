@@ -152642,6 +152642,7 @@ teazle
 teazled
 teazles
 teazling
+tech
 teched
 techie
 techier
