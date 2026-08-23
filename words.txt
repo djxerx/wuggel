@@ -44683,6 +44683,7 @@ dowser
 dowsers
 dowses
 dowsing
+dox
 doxie
 doxies
 doxologies
@@ -90916,6 +90917,7 @@ mewlers
 mewling
 mewls
 mews
+mex
 mezcal
 mezcals
 meze
@@ -153864,6 +153866,7 @@ tew
 tewed
 tewing
 tews
+tex
 texas
 texases
 text
