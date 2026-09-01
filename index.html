@@ -872,7 +872,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.74</span>
+      <span class="version-label">v0.76</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1148,7 +1148,7 @@
 <script>
 // Single source of truth for the displayed version (sw.js CACHE_NAME
 // must be bumped in step with it on every build).
-const APP_VERSION = 'v0.74';
+const APP_VERSION = 'v0.76';
 document.querySelector('.version-label').textContent = APP_VERSION;
 
 // ═══════════════════════════════════════════════════════════
@@ -1517,8 +1517,8 @@ function activePlayer() {
 // ── Par model constants (all editable in the ⚙ Par menu) ──
 // Length buckets are 2,3,4,5,6,7 where 7 means "7 or more".
 const PAR_DEFAULTS = {
-  probLen:  { 2: 0.55, 3: 0.40, 4: 0.22, 5: 0.10, 6: 0.05, 7: 0.02 },  // base find chance
-  capLen:   { 2: 8, 3: 10, 4: 6, 5: 3, 6: 1.5, 7: 1 },  // max expected finds @ 2:00
+  probLen:  { 2: 0.60, 3: 0.50, 4: 0.24, 5: 0.10, 6: 0.05, 7: 0.02 },  // base find chance
+  capLen:   { 2: 15, 3: 15, 4: 15, 5: 4, 6: 1.5, 7: 1 },  // max expected finds @ 2:00
   obscureBase:  0.25,   // penalty factor for a 2-letter word outside Word10K …
   obscureDecay: 0.70,   // … multiplied by this for every letter beyond 2
   turnDamping:  0.12,   // per direction-change damping of a word's swipe path
@@ -2573,7 +2573,7 @@ let settingAntiCluster    = true;   // spread vowels/consonants evenly
 let settingGameTime       = 120;    // game duration in seconds
 let settingColorCorrect   = true;   // show green tiles when word is valid
 let settingShowMatch      = true;   // live match colors while swiping; off = reveal on release
-let settingCommonCutoff   = 10000;  // top-N frequency rank that counts as "common"
+let settingCommonCutoff   = 17000;  // top-N frequency rank that counts as "common"
 let settingScoreLeft      = false;  // word score left of the word instead of right
 
 // Scoring options
@@ -3472,6 +3472,16 @@ function startIntro() {
     [-0.35,  0.42,   8], [ 0.35, -0.40, -30], [ 0.00,  0.02,  20],
   ];
 
+  // Random reveal order — the title unscrambles differently every
+  // launch.  The pile is stacked so whichever tile moves next is
+  // always the one on top.
+  const order = targets.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const seq = new Map(order.map((ti, k) => [ti, k]));   // target idx → move position
+
   targets.forEach((t, i) => {
     const [sx, sy, rot] = scatter[i];
     t.startX = px + sx * T;
@@ -3481,7 +3491,7 @@ function startIntro() {
     wrap.className    = 'intro-tile';
     wrap.style.width  = T + 'px';
     wrap.style.height = T + 'px';
-    wrap.style.zIndex = String(20 - i);      // next tile to move is on top
+    wrap.style.zIndex = String(20 - seq.get(i));   // next mover sits on top
     wrap.style.transform = `translate(${t.startX}px, ${t.startY}px) rotate(${rot}deg)`;
     wrap.innerHTML = `
       <div class="intro-tile-inner">
@@ -3493,17 +3503,39 @@ function startIntro() {
     t.el = wrap;
   });
 
-  // Flip + slide each tile, staggered; the path bows sideways a
-  // little (alternating) like a finger dragging it into place.
+  // Flip + slide each tile, staggered in the shuffled order.
+  // Half the tiles travel a single arc of random depth; the other
+  // half get one extra wave (an S-curve), like a looser finger drag.
   targets.forEach((t, i) => {
-    const delay = 400 + i * 340;
-    const midX  = (t.startX + t.x) / 2 + (i % 2 ? 1 : -1) * T * 0.9;
-    const midY  = (t.startY + t.y) / 2 - T * 0.35;
-    t.el.animate([
-      { transform: `translate(${t.startX}px, ${t.startY}px) rotate(${t.rot}deg)` },
-      { transform: `translate(${midX}px, ${midY}px) rotate(${t.rot / 2}deg)`, offset: 0.5 },
-      { transform: `translate(${t.x}px, ${t.y}px) rotate(0deg)` },
-    ], { duration: 680, delay, easing: 'ease-in-out', fill: 'both' });
+    const k     = seq.get(i);
+    const delay = 400 + k * 340;
+    const dx  = t.x - t.startX, dy = t.y - t.startY;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux  = -dy / len, uy = dx / len;           // unit perpendicular
+    const sign = Math.random() < 0.5 ? 1 : -1;
+
+    let frames, duration;
+    if (Math.random() < 0.5) {
+      // simple arc, varied depth
+      const amp = T * (0.3 + Math.random() * 0.7) * sign;
+      duration  = 650;
+      frames = [
+        { transform: `translate(${t.startX}px, ${t.startY}px) rotate(${t.rot}deg)` },
+        { transform: `translate(${t.startX + dx * 0.5 + ux * amp}px, ${t.startY + dy * 0.5 + uy * amp}px) rotate(${t.rot / 2}deg)`, offset: 0.5 },
+        { transform: `translate(${t.x}px, ${t.y}px) rotate(0deg)` },
+      ];
+    } else {
+      // arc with one extra wave — bows one way, then the other
+      const amp = T * (0.35 + Math.random() * 0.45) * sign;
+      duration  = 780;
+      frames = [
+        { transform: `translate(${t.startX}px, ${t.startY}px) rotate(${t.rot}deg)` },
+        { transform: `translate(${t.startX + dx * 0.33 + ux * amp}px, ${t.startY + dy * 0.33 + uy * amp}px) rotate(${t.rot * 0.6}deg)`, offset: 0.35 },
+        { transform: `translate(${t.startX + dx * 0.66 - ux * amp}px, ${t.startY + dy * 0.66 - uy * amp}px) rotate(${t.rot * 0.25}deg)`, offset: 0.7 },
+        { transform: `translate(${t.x}px, ${t.y}px) rotate(0deg)` },
+      ];
+    }
+    t.el.animate(frames, { duration, delay, easing: 'ease-in-out', fill: 'both' });
     t.el.querySelector('.intro-tile-inner').animate([
       { transform: 'rotateY(0deg)' },
       { transform: 'rotateY(180deg)' },
@@ -3572,7 +3604,7 @@ startIntro();
         <div class="setting-number-row">
           <span class="setting-number-label">Common cutoff (top N words)</span>
           <input type="number" class="setting-number" id="settingCommonCutoff"
-                 min="100" max="40000" step="500" value="10000" onchange="onBoardGateChange()">
+                 min="100" max="40000" step="500" value="17000" onchange="onBoardGateChange()">
         </div>
         <div class="setting-number-row">
           <span class="setting-number-label">Min common words on board</span>
@@ -3811,7 +3843,7 @@ startIntro();
       <div class="setting-section">
         <div class="setting-section-title">Rare-Word Penalty</div>
         <p class="setting-desc" style="margin:0 0 8px">
-          Words outside the common 10K list are multiplied by
+          Words outside the common word list are multiplied by
           Base% × Decay%^(letters−2) — longer rare words count less.
         </p>
         <div class="setting-number-row"><span class="setting-number-label">Base (%)</span>
