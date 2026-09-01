@@ -1,8 +1,8 @@
 // ── Service Worker — Word Swipe ──────────────────────────────
 // CACHE_NAME must change on every deploy (keep in sync with the
-// version label in index.html).  A byte-different sw.js is what
+// APP_VERSION in index.html).  A byte-different sw.js is what
 // triggers the browser to install the update.
-const CACHE_NAME = 'word-swipe-v0.61';
+const CACHE_NAME = 'word-swipe-v0.71';
 
 // Must-have for the app shell to work offline.
 const CRITICAL_ASSETS = [
@@ -31,18 +31,51 @@ const OPTIONAL_ASSETS = [
   '/sounds/highscore.wav',
 ];
 
+// Safari refuses to serve a cached response that carries the
+// `redirected` flag for a navigation (e.g. the host 308s
+// /index.html → /).  Re-wrapping the body strips the flag so an
+// offline cold start can always use the cached shell.
+async function cleanResponse(res) {
+  if (!res.redirected) return res;
+  const body = await res.blob();
+  return new Response(body, {
+    status: 200,
+    statusText: 'OK',
+    headers: res.headers,
+  });
+}
+
+async function cachePut(cache, url, res) {
+  try { await cache.put(url, await cleanResponse(res)); } catch (_) {}
+}
+
+// Network fetch that gives up after `ms` — a flaky connection then
+// falls back to cache instead of hanging the launch.
+function fetchWithTimeout(request, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    fetch(request).then(
+      r => { clearTimeout(timer); resolve(r); },
+      e => { clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.addAll(CRITICAL_ASSETS).then(() =>
-        Promise.allSettled(
-          OPTIONAL_ASSETS.map(url =>
-            fetch(url).then(r => { if (r.ok) return cache.put(url, r); }).catch(() => {})
-          )
-        )
-      )
-    ).then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    // Critical shell — install fails (and retries next launch) if missing
+    for (const url of CRITICAL_ASSETS) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('install failed: ' + url);
+      await cache.put(url, await cleanResponse(res));
+    }
+    // Optional assets — best effort, never block install
+    await Promise.allSettled(OPTIONAL_ASSETS.map(url =>
+      fetch(url).then(r => { if (r.ok) return cachePut(cache, url, r); }).catch(() => {})
+    ));
+    await self.skipWaiting();
+  })());
 });
 
 // Activate: purge caches from previous versions
@@ -55,8 +88,9 @@ self.addEventListener('activate', event => {
 });
 
 // Fetch strategy:
-//  • Navigations + index.html → NETWORK-FIRST so a simple reload
-//    always picks up the newest deploy; cache is the offline fallback.
+//  • Navigations + index.html → NETWORK-FIRST (4s timeout) so an
+//    online launch always picks up the newest deploy; the cached
+//    shell is the offline / slow-network fallback.
 //  • Everything else → cache-first with background refresh
 //    (stale-while-revalidate), so assets are instant but stay current.
 self.addEventListener('fetch', event => {
@@ -68,17 +102,22 @@ self.addEventListener('fetch', event => {
                   url.pathname === '/' || url.pathname === '/index.html';
 
   if (isShell) {
-    event.respondWith(
-      fetch(event.request).then(response => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+    event.respondWith((async () => {
+      try {
+        const net = await fetchWithTimeout(event.request, 4000);
+        if (net && net.ok) {
+          const copy = net.clone();
+          caches.open(CACHE_NAME).then(c => cachePut(c, event.request.url, copy));
+          return net;
         }
-        return response;
-      }).catch(() =>
-        caches.match(event.request).then(hit => hit || caches.match('/index.html'))
-      )
-    );
+        throw new Error('bad status');
+      } catch (_) {
+        return (await caches.match(event.request)) ||
+               (await caches.match('/index.html')) ||
+               (await caches.match('/')) ||
+               Response.error();
+      }
+    })());
     return;
   }
 
@@ -87,7 +126,7 @@ self.addEventListener('fetch', event => {
       const refresh = fetch(event.request).then(response => {
         if (response && response.status === 200) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          caches.open(CACHE_NAME).then(c => cachePut(c, event.request.url, clone));
         }
         return response;
       }).catch(() => null);

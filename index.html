@@ -66,6 +66,17 @@
     .stat-label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; }
     .stat-value { font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1; }
 
+    /* Current board number — dash marks the 6 digits needed to replay it */
+    .timer-game {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+
     .timer-wrap {
       background: var(--panel);
       border-radius: 10px;
@@ -132,6 +143,18 @@
     /* Version label + button grouped at the right of the header */
     .header-end { display: flex; align-items: center; gap: 7px; }
     .version-label { font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: 0.3px; }
+    .new-btn { white-space: nowrap; }
+
+    /* Phone widths: shrink the header so nothing clips off the edge */
+    @media (max-width: 430px) {
+      .header { gap: 5px; }
+      .stat-value   { font-size: 24px; }
+      .timer-value  { font-size: 24px; }
+      .timer-wrap   { padding: 5px 9px; }
+      .timer-game   { font-size: 10px; letter-spacing: 0; }
+      .new-btn      { padding: 7px 9px; font-size: 12px; }
+      .header-end   { gap: 4px; }
+    }
 
     /* ── Word display ────────────────────────────────────── */
     .word-display {
@@ -188,7 +211,7 @@
     .tile {
       aspect-ratio: 1;
       border-radius: var(--radius);
-      background: #ffffff;
+      background: var(--tile-bg, #ffffff);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -227,7 +250,7 @@
       font-weight: 800;
       text-transform: uppercase;
       line-height: 1;
-      color: #000000;
+      color: var(--tile-text, #000000);
     }
 
     .tile-pts {
@@ -236,7 +259,7 @@
       right: 6px;
       font-size: clamp(10px, 2.2vmin, 17px);
       font-weight: 700;
-      color: #000000;
+      color: var(--tile-text, #000000);
       line-height: 1;
     }
 
@@ -370,6 +393,18 @@
       padding: 2px 4px;
     }
     .rs-col.active { color: #e5e7eb; }
+    .rs-col.missed-filter {
+      border: 1px solid #374151;
+      border-radius: 6px;
+      color: #93c5fd;
+      padding: 2px 8px;
+    }
+
+    /* Words outside the common 10K list — light yellow */
+    .result-word-row.obscure span:first-child { color: #fde047; opacity: 0.85; }
+
+    /* Three buttons must share the result card's width */
+    .result-card .btn-row .play-btn { flex: 1; padding: 13px 6px; font-size: 14px; }
 
     /* Mini board showing the path for a tapped word */
     .mini-board-wrap {
@@ -439,7 +474,12 @@
       margin-bottom: 24px;
     }
     .seed-input {
-      width: 220px;
+      width: 200px;
+      height: 56px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #1f2937;
       border: 2px solid #374151;
       border-radius: 10px;
@@ -447,14 +487,39 @@
       font-size: 28px;
       font-weight: 800;
       text-align: center;
-      padding: 10px 20px;
       letter-spacing: 6px;
+      text-indent: 6px;          /* offsets the trailing letter-space */
       font-variant-numeric: tabular-nums;
       outline: none;
+      user-select: none;
       transition: border-color 0.15s;
     }
-    .seed-input:focus   { border-color: var(--accent); }
+    .seed-input.placeholder { color: #4b5563; }
     .seed-input.invalid { border-color: var(--accent); color: var(--accent); }
+
+    /* On-screen numeric keypad for seed entry */
+    .seed-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .seed-key {
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      padding: 13px 0;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s, transform 0.08s;
+    }
+    .seed-key:active { background: #374151; transform: scale(0.94); }
+    .seed-key.fn      { font-size: 15px; font-weight: 800; color: var(--muted); }
+    .seed-key.fn.clr  { color: var(--accent); }
 
     .seed-dice-btn {
       background: #1f2937;
@@ -563,6 +628,86 @@
       transition: background 0.15s, color 0.15s;
     }
     .result-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Intro animation ─────────────────────────────────── */
+    #introOverlay { background: var(--bg); z-index: 300; }
+    .intro-tile {
+      position: absolute;
+      top: 0; left: 0;
+      perspective: 500px;
+      will-change: transform;
+    }
+    .intro-tile-inner {
+      position: relative;
+      width: 100%; height: 100%;
+      transform-style: preserve-3d;
+    }
+    .intro-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 14%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .intro-back {
+      background: #2b3544;                      /* face-down tile */
+      border: 2px solid #3d4a5c;
+    }
+    .intro-front {
+      background: #ffffff;
+      color: #111;
+      font-weight: 800;
+      transform: rotateY(180deg);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+    }
+    .intro-pts {
+      position: absolute;
+      right: 9%; bottom: 5%;
+      font-weight: 700;
+    }
+    .intro-hint {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 8%;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing: 1px;
+      opacity: 0;
+      transition: opacity 0.6s;
+      animation: intro-hint-pulse 2s ease-in-out infinite;
+    }
+    .intro-hint.show { opacity: 1; }
+    @keyframes intro-hint-pulse {
+      50% { transform: translateY(-3px); }
+    }
+
+    /* Brief outcome flash on release (Show Word Match off) */
+    .tile.flash-valid   { background: var(--green); border-color: #6ee7c0; }
+    .tile.flash-dup     { background: #f59e0b;      border-color: #fbbf24; }
+    .tile.flash-invalid { background: var(--tile-sel); border-color: #ff8fa3; }
+
+    /* Color settings rows */
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1px solid #4b5563;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .color-row .setting-number { width: 56px; }
 
     /* ── Utility ─────────────────────────────────────────── */
     .vis-hidden { display: none !important; }
@@ -688,11 +833,12 @@
       <span class="stat-value" id="score">0</span>
     </div>
     <div class="stat">
-      <span class="stat-label">Par</span>
+      <span class="stat-label" id="parLabel">Expected</span>
       <span class="stat-value" id="parValue" style="color:var(--muted)">–</span>
     </div>
     <div class="timer-wrap">
       <div class="timer-value ok" id="timer">2:00</div>
+      <div class="timer-game" id="gameNumber">–</div>
     </div>
     <div class="header-end">
       <button class="settings-btn" onclick="openSettings()" title="Settings">
@@ -711,7 +857,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.61</span>
+      <span class="version-label">v0.71</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -746,6 +892,8 @@
       <div class="result-list-col">
         <div class="result-sort-head">
           <button class="rs-col" id="sortByWord"  onclick="setResultSort('word')">Word ▲</button>
+          <button class="rs-col missed-filter vis-hidden" id="missedFilterBtn"
+                  onclick="toggleMissedFilter()">Common</button>
           <button class="rs-col active" id="sortByScore" onclick="setResultSort('score')">Score ▼</button>
         </div>
         <div class="result-word-list" id="resultWordList"></div>
@@ -758,20 +906,54 @@
     <div class="btn-row">
       <button class="play-btn" onclick="newGame()">New Game</button>
       <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
+              onclick="showBreakdown()">Breakdown</button>
+      <button class="play-btn" style="background:#1f2937;border:1px solid #374151"
               onclick="showHighScores()">High Scores</button>
     </div>
   </div>
 </div>
 
+<!-- Per-length breakdown vs par -->
+<div class="overlay hidden" id="breakdownModal">
+  <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+    <h2 style="text-align:center;margin-bottom:6px">Breakdown</h2>
+    <p class="settings-subtitle" id="breakdownStats" style="margin-bottom:12px"></p>
+    <div id="breakdownTable"></div>
+    <p class="setting-desc" style="margin:8px 0 0">
+      "Par" columns show how many words of each length an average
+      player is expected to find on this board, and the points from them.
+    </p>
+    <button class="play-btn" onclick="closeBreakdown()" style="width:100%;margin-top:12px">Done</button>
+  </div>
+</div>
+
 <!-- Seed overlay -->
+<!-- Opening animation: dumped face-down tiles flip and slide to spell the title -->
+<div class="overlay" id="introOverlay">
+  <div class="intro-hint" id="introHint">Tap anywhere to play</div>
+</div>
+
 <div class="overlay hidden" id="seedOverlay">
   <div class="seed-card">
     <h2>New Game</h2>
-    <p>Enter a 6-digit seed or roll a random one</p>
+    <p>Enter a 6-digit game number or roll a random one</p>
     <div class="seed-input-wrap">
-      <input class="seed-input" id="seedInput" type="text"
-             inputmode="numeric" maxlength="6" placeholder="000000">
+      <div class="seed-input placeholder" id="seedInput">000000</div>
       <button class="seed-dice-btn" onclick="rollSeed()" title="Random seed">&#9861;</button>
+    </div>
+    <div class="seed-keypad">
+      <button class="seed-key" onclick="seedKey('1')">1</button>
+      <button class="seed-key" onclick="seedKey('2')">2</button>
+      <button class="seed-key" onclick="seedKey('3')">3</button>
+      <button class="seed-key" onclick="seedKey('4')">4</button>
+      <button class="seed-key" onclick="seedKey('5')">5</button>
+      <button class="seed-key" onclick="seedKey('6')">6</button>
+      <button class="seed-key" onclick="seedKey('7')">7</button>
+      <button class="seed-key" onclick="seedKey('8')">8</button>
+      <button class="seed-key" onclick="seedKey('9')">9</button>
+      <button class="seed-key fn clr" onclick="seedClear()" title="Clear">CLEAR</button>
+      <button class="seed-key" onclick="seedKey('0')">0</button>
+      <button class="seed-key fn" onclick="seedBackspace()" title="Backspace">&#9003;</button>
     </div>
     <div class="seed-btn-row">
       <button class="play-btn" onclick="startFromSeed()">Start</button>
@@ -866,8 +1048,14 @@
       <button class="play-btn" onclick="openBoardGate()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px;margin-bottom:8px">
         ⚙ Qualified Board
       </button>
-      <button class="play-btn" onclick="openScoring()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+      <button class="play-btn" onclick="openScoring()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px;margin-bottom:8px">
         ⚙ Scoring
+      </button>
+      <button class="play-btn" onclick="openParSettings()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px;margin-bottom:8px">
+        ⚙ Par
+      </button>
+      <button class="play-btn" onclick="openColorSettings()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+        🎨 Color
       </button>
     </div>
 
@@ -889,6 +1077,20 @@
         </div>
         <label class="toggle-switch">
           <input type="checkbox" id="settingScoreLeft" onchange="onSettingChange()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-toggle-row">
+        <div>
+          <span class="setting-toggle-label">Show Word Match During Selection</span>
+          <p class="setting-desc" style="margin:2px 0 0">
+            On: tiles color live while you swipe, as usual. Off: tiles stay
+            neutral until you lift your finger, then flash the result color;
+            the word at the top stays tinted until your next touch.
+          </p>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingShowMatch" checked onchange="onSettingChange()">
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -928,6 +1130,11 @@
 </div>
 
 <script>
+// Single source of truth for the displayed version (sw.js CACHE_NAME
+// must be bumped in step with it on every build).
+const APP_VERSION = 'v0.71';
+document.querySelector('.version-label').textContent = APP_VERSION;
+
 // ═══════════════════════════════════════════════════════════
 //  SOUND SYSTEM
 //  Drop .wav files into the sounds/ folder — missing files
@@ -950,16 +1157,10 @@ const SOUND_FILES = {
 // Each file is fetched once at startup and decoded into a raw
 // PCM AudioBuffer.  playSound() simply schedules a buffer read,
 // which fires with near-zero latency and allows full overlap.
-const AUDIO_CTX     = new (window.AudioContext || window.webkitAudioContext)();
+let   AUDIO_CTX     = new (window.AudioContext || window.webkitAudioContext)();
 const AUDIO_BUFFERS = {};
-
-// iOS Safari suspends AudioContext until a user gesture.
-// Resume it on the very first touch/click anywhere on the page.
-['touchstart', 'pointerdown', 'click'].forEach(evt =>
-  document.addEventListener(evt, () => {
-    if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume();
-  }, { once: true })
-);
+const AUDIO_RAW     = {};   // pristine file bytes, kept so the context
+                            // can be rebuilt after iOS breaks it
 
 async function loadSounds() {
   for (const [name, path] of Object.entries(SOUND_FILES)) {
@@ -967,16 +1168,62 @@ async function loadSounds() {
       const res = await fetch(path);
       if (!res.ok) continue;
       const arr = await res.arrayBuffer();
+      AUDIO_RAW[name]     = arr.slice(0);   // decode may detach `arr`
       AUDIO_BUFFERS[name] = await AUDIO_CTX.decodeAudioData(arr);
     } catch (_) {}   // missing file or decode error — silently skip
   }
 }
 
+// ── iOS self-healing ─────────────────────────────────────
+// Backgrounding the app or locking the device suspends the
+// AudioContext; sometimes iOS leaves it permanently broken so
+// resume() no longer works.  Every touch (and each return to the
+// app) tries resume(); if the context still isn't running shortly
+// after a gesture-driven resume, it is torn down and rebuilt from
+// the saved bytes — no restart needed.
+let audioRebuilding = false;
+
+async function rebuildAudio() {
+  if (audioRebuilding) return;
+  audioRebuilding = true;
+  try {
+    try { AUDIO_CTX.close(); } catch (_) {}
+    AUDIO_CTX = new (window.AudioContext || window.webkitAudioContext)();
+    if (AUDIO_CTX.state !== 'running') AUDIO_CTX.resume().catch(() => {});
+    for (const [name, raw] of Object.entries(AUDIO_RAW)) {
+      try { AUDIO_BUFFERS[name] = await AUDIO_CTX.decodeAudioData(raw.slice(0)); }
+      catch (_) {}
+    }
+  } finally { audioRebuilding = false; }
+}
+
+function ensureAudioAlive(fromGesture) {
+  if (!AUDIO_CTX) return;
+  const st = AUDIO_CTX.state;
+  if (st === 'running') return;
+  if (st === 'closed') { if (fromGesture) rebuildAudio(); return; }
+  // 'suspended' or iOS's non-standard 'interrupted'
+  AUDIO_CTX.resume().then(() => {
+    // resume can "succeed" yet leave a dead context — verify, and
+    // only rebuild off the back of a real user gesture
+    if (fromGesture) setTimeout(() => {
+      if (AUDIO_CTX.state !== 'running') rebuildAudio();
+    }, 250);
+  }).catch(() => { if (fromGesture) rebuildAudio(); });
+}
+
+['touchstart', 'pointerdown', 'keydown'].forEach(evt =>
+  document.addEventListener(evt, () => ensureAudioAlive(true), { passive: true }));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) ensureAudioAlive(false);
+});
+window.addEventListener('pageshow', () => ensureAudioAlive(false));
+
 function playSound(name) {
   const buf = AUDIO_BUFFERS[name];
   if (!buf) return;
   try {
-    if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume();
+    if (AUDIO_CTX.state !== 'running') ensureAudioAlive(false);
     const src = AUDIO_CTX.createBufferSource();
     src.buffer = buf;
     src.connect(AUDIO_CTX.destination);
@@ -1179,14 +1426,14 @@ function showHighScores(newEntry) {
         entry.seed  === String(newEntry.seed).padStart(6, '0');
       return `<tr class="${isNew ? 'hs-new' : ''}">
         <td>${i + 1}.</td>
-        <td>${entry.seed}</td>
+        <td>${formatSeed(entry.seed)}</td>
         <td>${entry.score.toLocaleString()}${entry.ns ? '<span style="color:var(--muted)">*</span>' : ''}</td>
       </tr>`;
     }).join('');
     const hasNS = hs.some(e => e.ns);
     content.innerHTML = `
       <table class="hs-table">
-        <thead><tr><th>#</th><th>Seed</th><th>Score</th></tr></thead>
+        <thead><tr><th>#</th><th>Game</th><th>Score</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       ${hasNS ? '<p class="setting-desc" style="margin:8px 0 0;text-align:center">* played with non-standard scoring</p>' : ''}`;
@@ -1212,10 +1459,8 @@ function closeHighScores() {
 const PLAYERS_KEY      = 'wordswipe_players';
 const GAME_HISTORY_MAX = 50;
 
-let guestMode       = false;   // session-only; never persisted, so a
-                               // reload reverts to the saved player
-let boardPotential  = 0;       // potential of the current board
-let currentParValue = 0;       // par shown for the current game
+let guestMode = false;   // session-only; never persisted, so a
+                         // reload reverts to the saved player
 
 function defaultPlayerSlot(n) { return { name: 'Player ' + n, games: [] }; }
 
@@ -1239,13 +1484,28 @@ function activePlayer() {
   return guestMode ? null : playersData.players[playersData.active];
 }
 
-// ── Find-probability model (average player) ──────────────
-// Base chance of finding a word of a given length …
-const FIND_PROB_BY_LEN = { 2: 0.55, 3: 0.40, 4: 0.22, 5: 0.10, 6: 0.05, 7: 0.025, 8: 0.012 };
-// … cut sharply for words outside the common Word10K list …
-const OBSCURE_FACTOR = 0.12;
-// … and dampened for twisty swipe paths (per direction change).
-const TURN_DAMPING = 0.12;
+// ── Par model constants (all editable in the ⚙ Par menu) ──
+// Length buckets are 2,3,4,5,6,7 where 7 means "7 or more".
+const PAR_DEFAULTS = {
+  probLen:  { 2: 0.55, 3: 0.40, 4: 0.22, 5: 0.10, 6: 0.05, 7: 0.02 },  // base find chance
+  capLen:   { 2: 8, 3: 10, 4: 6, 5: 3, 6: 1.5, 7: 1 },  // max expected finds @ 2:00
+  obscureBase:  0.25,   // penalty factor for a 2-letter word outside Word10K …
+  obscureDecay: 0.70,   // … multiplied by this for every letter beyond 2
+  turnDamping:  0.12,   // per direction-change damping of a word's swipe path
+  timeExponent: 0.7,    // par scales with (time/120)^exponent
+  histWindow:   20,     // handicap looks at the last N recorded games
+  bestOf:       8,      // … and keeps the best half, at most this many
+  showPar:      false,  // header shows board Par instead of player Expected
+};
+
+function clonePar(src) { return JSON.parse(JSON.stringify(src)); }
+let parSettings = clonePar(PAR_DEFAULTS);
+
+function lenBucket(word) { return Math.min(word.length, 7); }
+
+function obscureFactor(L) {
+  return parSettings.obscureBase * Math.pow(parSettings.obscureDecay, L - 2);
+}
 
 // Number of direction changes along a tile path
 function pathTurns(path) {
@@ -1259,17 +1519,80 @@ function pathTurns(path) {
   return turns;
 }
 
-function computeBoardPotential() {
-  let pot = 0;
+// The games that feed the handicap: same scoring signature, last
+// histWindow, ranked by score/par, best half kept (max bestOf).
+function selectProfileGames(pl) {
+  if (!pl) return [];
+  const sig   = scoringSignature();
+  const games = pl.games.filter(g => g.sig === sig && (g.par > 0 || g.potential > 0))
+                        .slice(-parSettings.histWindow);
+  const ranked = [...games].sort((a, b) =>
+    b.score / (b.par || b.potential) - a.score / (a.par || a.potential));
+  return ranked.slice(0, Math.max(1, Math.min(parSettings.bestOf, Math.ceil(ranked.length / 2))));
+}
+
+// ── The par model ─────────────────────────────────────────
+// PAR (average player): every word's value × find-probability
+// (length base × obscure penalty × turn damping), uniformly
+// squashed per length so expected finds never exceed that
+// length's cap, then scaled by time.
+// EXPECTED (this player): same board data, but find rates and
+// per-length ceilings come from the player's recorded history
+// (blended toward the defaults while history is small).
+function computeParModel() {
+  const tf     = Math.pow(settingGameTime / 120, parSettings.timeExponent);
+  const perLen = {};
+
   for (const [w, pts] of allPossibleWords) {
-    let p = FIND_PROB_BY_LEN[Math.min(w.length, 8)];
-    if (!WORD10K.has(w)) p *= OBSCURE_FACTOR;
+    const L = lenBucket(w);
+    let p = parSettings.probLen[L] ?? 0.02;
+    if (!WORD10K.has(w)) p *= obscureFactor(L);
     const path = allWordPaths.get(w);
-    if (path) p *= 1 / (1 + TURN_DAMPING * pathTurns(path));
-    pot += pts * p;
+    if (path) p *= 1 / (1 + parSettings.turnDamping * pathTurns(path));
+    const b = (perLen[L] ??= { avail: 0, rawFinds: 0, rawPts: 0 });
+    b.avail++;
+    b.rawFinds += p;
+    b.rawPts   += pts * p;
   }
-  pot *= Math.pow(settingGameTime / 120, 0.7);   // longer games help sub-linearly
-  return Math.round(pot);
+
+  let par = 0;
+  for (const L of Object.keys(perLen)) {
+    const b = perLen[L];
+    const s = Math.min(1, (parSettings.capLen[L] ?? 99) / (b.rawFinds || 1e-9));
+    b.expFinds = b.rawFinds * s * tf;
+    b.expPts   = b.rawPts   * s * tf;
+    par += b.expPts;
+  }
+
+  // Player expectation from the per-length history profile
+  const sel = selectProfileGames(activePlayer());
+  const n   = sel.length;
+  const wgt = n / (n + 4);          // shrink toward defaults while history is small
+  let expected = 0;
+  for (const L of Object.keys(perLen)) {
+    const b = perLen[L];
+    let f = 0, a = 0;
+    for (const g of sel) {
+      const fa = g.byLen?.[L];
+      if (fa) { f += fa[0]; a += fa[1]; }
+    }
+    const obsRate = a > 0 ? f / a : 0;                       // observed find rate
+    const defRate = b.avail > 0 ? b.expFinds / b.avail : 0;  // par's rate on THIS board
+    const rate    = n > 0 ? wgt * obsRate + (1 - wgt) * defRate : defRate;
+    const obsTyp  = n > 0 ? f / n : 0;                       // typical count per game
+    const defTyp  = (parSettings.capLen[L] ?? 99) * tf;
+    const typ     = n > 0 ? wgt * obsTyp + (1 - wgt) * defTyp : defTyp;
+    b.playerExpFinds = Math.min(rate * b.avail, typ);
+    const ptsPerFind = b.expFinds > 1e-9 ? b.expPts / b.expFinds : 0;
+    b.playerExpPts   = b.playerExpFinds * ptsPerFind;
+    expected += b.playerExpPts;
+  }
+
+  return {
+    perLen,
+    par:      Math.max(10, Math.round(par / 5) * 5),
+    expected: Math.max(10, Math.round(expected / 5) * 5),
+  };
 }
 
 // Compact signature of the settings that change scoring.  Par and
@@ -1291,43 +1614,48 @@ function matchingGames(pl) {
   return pl ? pl.games.filter(g => g.sig === sig) : [];
 }
 
-// Golf-style handicap ratio for a player (1 = average player)
-function playerRatio(pl) {
-  if (!pl) return 1;
-  const ratios = matchingGames(pl).slice(-20)
-    .filter(g => g.potential > 0)
-    .map(g => g.score / g.potential);
-  if (!ratios.length) return 1;
-  ratios.sort((a, b) => b - a);
-  const keep = ratios.slice(0, Math.max(1, Math.min(8, Math.ceil(ratios.length / 2))));
-  const mean = keep.reduce((a, b) => a + b, 0) / keep.length;
-  return Math.min(3, Math.max(0.2, mean));
+// Overall performance factor (for the stats display): mean of the
+// selected best games' score/par, 1 = plays exactly to par.
+function perfFactor(pl) {
+  const sel = selectProfileGames(pl);
+  if (!sel.length) return 1;
+  const m = sel.reduce((s, g) => s + g.score / (g.par || g.potential || 1), 0) / sel.length;
+  return Math.min(3, Math.max(0.2, m));
 }
 
+let parModel       = null;   // full per-length model for the current board
+let boardParValue  = 0;      // Par — average-player expectation
+let currentParValue = 0;     // Expected — this player's handicap-adjusted target
+
 function computeAndShowPar() {
-  boardPotential  = computeBoardPotential();
-  currentParValue = Math.max(10, Math.round(boardPotential * playerRatio(activePlayer()) / 5) * 5);
-  $('parValue').textContent = currentParValue;
+  parModel        = computeParModel();
+  boardParValue   = parModel.par;
+  currentParValue = parModel.expected;
+  updateParHeader();
+  $('gameNumber').textContent = formatSeed(currentSeed);
+}
+
+function updateParHeader() {
+  $('parLabel').textContent = parSettings.showPar ? 'Par' : 'Expected';
+  $('parValue').textContent = parSettings.showPar ? boardParValue : currentParValue;
 }
 
 // Record the finished game into the active player's history
 function recordGameForPlayer() {
   const pl = activePlayer();
-  if (!pl || boardPotential <= 0) return;
+  if (!pl || !parModel) return;
   const byLen = {};
   for (const [w] of allPossibleWords) {
-    const L = Math.min(w.length, 7);
-    (byLen[L] ??= [0, 0])[1]++;
+    (byLen[lenBucket(w)] ??= [0, 0])[1]++;
   }
   let common = 0, obscure = 0;
   for (const [w] of foundWords) {
-    const L = Math.min(w.length, 7);
-    (byLen[L] ??= [0, 0])[0]++;
+    (byLen[lenBucket(w)] ??= [0, 0])[0]++;
     if (WORD10K.has(w)) common++; else obscure++;
   }
   pl.games.push({
     t: Date.now(), seed: currentSeed, score: gameScore,
-    potential: boardPotential, par: currentParValue,
+    par: boardParValue, exp: currentParValue,
     byLen, common, obscure,
     sig: scoringSignature(), time: settingGameTime,
   });
@@ -1336,14 +1664,92 @@ function recordGameForPlayer() {
   savePlayersData();
 }
 
+// ── Indefinite word-level game log (for offline par analysis) ──
+// Missed words are NOT stored: boards regenerate deterministically
+// from game number + settings + version, so found words suffice.
+const GAMELOG_KEY = 'wordswipe_gamelog';
+
+function appendGameLog() {
+  const pl = activePlayer();
+  if (!pl) return;
+  try {
+    const log = JSON.parse(localStorage.getItem(GAMELOG_KEY)) || [];
+    log.push({
+      t: Date.now(), player: pl.name, seed: currentSeed,
+      sig: scoringSignature(), time: settingGameTime, ver: APP_VERSION,
+      par: boardParValue, exp: currentParValue, score: gameScore,
+      words: [...foundWords.entries()],
+    });
+    localStorage.setItem(GAMELOG_KEY, JSON.stringify(log));
+  } catch (_) {}
+}
+
+function gameLogCount() {
+  try { return (JSON.parse(localStorage.getItem(GAMELOG_KEY)) || []).length; }
+  catch { return 0; }
+}
+
+function exportGameLog() {
+  const data = localStorage.getItem(GAMELOG_KEY) || '[]';
+  const blob = new Blob([data], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'wordswipe-gamelog.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function clearGameLog() {
+  if (!confirm(`Delete the game log (${gameLogCount()} games)? Export it first if you want to keep it.`)) return;
+  localStorage.removeItem(GAMELOG_KEY);
+  $('gameLogCount').textContent = '0';
+}
+
 // ═══════════════════════════════════════════════════════════
 //  SEED UI
 // ═══════════════════════════════════════════════════════════
 function randomSeed() { return Math.floor(Math.random() * 1_000_000); }
 
+// Board numbers grow past 6 digits when the quality gate steps the seed
+// (base + N × 1,000,000).  Only the last 6 digits are needed to replay a
+// board, so a dash marks them off:  13666666 → "13-666666".
+function formatSeed(seed) {
+  const s = String(seed).padStart(6, '0');
+  return s.length > 6 ? s.slice(0, -6) + '-' + s.slice(-6) : s;
+}
+
+// ── Keypad seed entry ────────────────────────────────────
+let seedDigits = '';
+
+function updateSeedDisplay() {
+  const el = $('seedInput');
+  el.textContent = seedDigits || '000000';
+  el.classList.toggle('placeholder', seedDigits === '');
+  el.classList.remove('invalid');
+}
+
+function seedKey(d) {
+  if (seedDigits.length >= 6) return;
+  seedDigits += d;
+  updateSeedDisplay();
+}
+
+function seedBackspace() {
+  seedDigits = seedDigits.slice(0, -1);
+  updateSeedDisplay();
+}
+
+function seedClear() {
+  seedDigits = '';
+  updateSeedDisplay();
+}
+
 function rollSeed() {
-  $('seedInput').value = String(randomSeed()).padStart(6, '0');
-  $('seedInput').classList.remove('invalid');
+  seedDigits = String(randomSeed()).padStart(6, '0');
+  updateSeedDisplay();
 }
 
 function showSeedOverlay() {
@@ -1351,26 +1757,26 @@ function showSeedOverlay() {
   $('overlay').classList.add('hidden');
   $('hsOverlay').classList.add('hidden');
   $('seedOverlay').classList.remove('hidden');
-  $('seedInput').focus();
-  $('seedInput').select();
 }
 
 function startFromSeed() {
-  const raw = $('seedInput').value.trim();
-  const n   = parseInt(raw, 10);
-  if (isNaN(n) || n < 0 || n > 999999 || !/^\d{1,6}$/.test(raw)) {
+  if (!/^\d{1,6}$/.test(seedDigits)) {
     $('seedInput').classList.add('invalid');
     return;
   }
   $('seedOverlay').classList.add('hidden');
-  beginGame(n);
+  beginGame(parseInt(seedDigits, 10));
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  $('seedInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') startFromSeed();
-    $('seedInput').classList.remove('invalid');
-  });
+// Physical keyboard still works while the seed screen is open
+document.addEventListener('keydown', e => {
+  if ($('seedOverlay').classList.contains('hidden')) return;
+  if      (/^[0-9]$/.test(e.key))  seedKey(e.key);
+  else if (e.key === 'Backspace')  seedBackspace();
+  else if (e.key === 'Enter')      startFromSeed();
+  else if (e.key === 'Escape' || e.key === 'Delete') seedClear();
+  else return;
+  e.preventDefault();
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -1656,6 +2062,16 @@ function updateWordDisplay() {
     return;
   }
 
+  // Show-match off: while the finger is down, no hints — neutral word,
+  // no score preview.  The outcome colors appear on release.
+  if (!settingShowMatch && isDragging) {
+    el.className   = 'word-text neutral';
+    el.textContent = word;
+    sc.className   = 'word-score';
+    sc.innerHTML   = '';
+    return;
+  }
+
   if (foundWords.has(word)) {
     const oldPts = foundWords.get(word);
     const newPts = calcWordScore(selPath);
@@ -1697,13 +2113,15 @@ function updateTileStyles() {
                   calcWordScore(selPath) <= foundWords.get(word);
   const isValid = isWord && !isDup;
 
-  // When Color Correct is off, always show the neutral "selected" style
-  // so the player can't tell whether a word is valid mid-swipe.
-  const showValid = isValid && settingColorCorrect;
-  const showDup   = isDup   && settingColorCorrect;
+  // Live match colors only when Show Word Match is on (and Color
+  // Correct allows it); otherwise every selected tile looks the same.
+  const live      = settingShowMatch;
+  const showValid = isValid && settingColorCorrect && live;
+  const showDup   = isDup   && settingColorCorrect && live;
 
   tiles.forEach((t, i) => {
-    t.classList.remove('selected', 'valid-word', 'dup-word');
+    t.classList.remove('selected', 'valid-word', 'dup-word',
+                       'flash-valid', 'flash-dup', 'flash-invalid');
     if (selPath.includes(i))
       t.classList.add(showValid ? 'valid-word' : showDup ? 'dup-word' : 'selected');
   });
@@ -1720,6 +2138,7 @@ function submitWord() {
   if (!WORDS.has(word)) {
     playSound('invalid');
     shakeWordDisplay();
+    if (!settingShowMatch) return endSelectionWithReveal('invalid');
     return clearSelection();
   }
 
@@ -1735,12 +2154,21 @@ function submitWord() {
       $('score').textContent = gameScore;
       updateWordInList(word, newPts);
       showScorePop(diff, selPath[selPath.length - 1]);
-      flashImprovedWord(newPts, diff);
-      clearSelection();
+      if (!settingShowMatch) {
+        endSelectionWithReveal('valid',
+          `${newPts}&thinsp;<span style="color:#3b82f6;font-size:0.85em">+${diff}</span>`);
+      } else {
+        flashImprovedWord(newPts, diff);
+        clearSelection();
+      }
     } else {
       playSound('duplicate');
-      flashWordDisplay('dup');
-      clearSelection();
+      if (!settingShowMatch) {
+        endSelectionWithReveal('dup');
+      } else {
+        flashWordDisplay('dup');
+        clearSelection();
+      }
     }
     return;
   }
@@ -1753,8 +2181,32 @@ function submitWord() {
   $('score').textContent = gameScore;
   addWordToList(word, pts);
   showScorePop(pts, selPath[selPath.length - 1]);
-  flashWordDisplay('valid');
+  if (!settingShowMatch) {
+    endSelectionWithReveal('valid', `+${pts}`);
+  } else {
+    flashWordDisplay('valid');
+    clearSelection();
+  }
+}
+
+// Show-match-off release: briefly flash the word's tiles in the
+// outcome color, and keep the word at the top tinted (with its
+// score) until the next touch replaces it.
+function endSelectionWithReveal(kind, scoreHTML) {
+  const path = [...selPath];
+  const word = currentWord();
   clearSelection();
+
+  const flashCls = { valid: 'flash-valid', dup: 'flash-dup', invalid: 'flash-invalid' }[kind];
+  const tiles = $('board').querySelectorAll('.tile');
+  path.forEach(i => tiles[i]?.classList.add(flashCls));
+  setTimeout(() => tiles.forEach(t => t.classList.remove(flashCls)), 300);
+
+  const el = $('wordText'), sc = $('wordScore');
+  el.textContent = word;
+  el.className   = `word-text ${kind}`;
+  if (scoreHTML) { sc.innerHTML = scoreHTML; sc.className = 'word-score show'; }
+  else           { sc.innerHTML = '';        sc.className = 'word-score'; }
 }
 
 function flashWordDisplay(cls) {
@@ -1792,7 +2244,8 @@ function clearSelection() {
   selPath    = [];
   isDragging = false;
   const tiles = $('board').querySelectorAll('.tile');
-  tiles.forEach(t => t.classList.remove('selected', 'valid-word', 'dup-word'));
+  tiles.forEach(t => t.classList.remove('selected', 'valid-word', 'dup-word',
+                                        'flash-valid', 'flash-dup', 'flash-invalid'));
   const canvas = $('path-canvas');
   canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   $('wordText').textContent  = '';
@@ -1946,7 +2399,7 @@ function startTimer() {
     timeLeft--;
     updateTimerDisplay();
     if (timeLeft === 30 && !warnPlayed) { playSound('warning'); warnPlayed = true; }
-    if (timeLeft <= 0)                  { clearInterval(timerHandle); endGame(); }
+    if (timeLeft <= 0)                  { clearInterval(timerHandle); endGame(true); }
   }, 1000);
 }
 
@@ -1988,6 +2441,7 @@ function beginGame(seed) {
   gameActive  = true;
 
   $('score').textContent     = '0';
+  $('gameNumber').textContent = '–';   // set once the board is settled
   $('wordGrid').innerHTML    = '';
   $('wordText').textContent  = '';
   $('wordScore').className   = 'word-score';
@@ -2014,6 +2468,7 @@ let settingMaxDupes       = 3;      // letter balance: max copies of one letter
 let settingAntiCluster    = true;   // spread vowels/consonants evenly
 let settingGameTime       = 120;    // game duration in seconds
 let settingColorCorrect   = true;   // show green tiles when word is valid
+let settingShowMatch      = true;   // live match colors while swiping; off = reveal on release
 let settingScoreLeft      = false;  // word score left of the word instead of right
 
 // Scoring options
@@ -2106,37 +2561,41 @@ function newBoardFromQuality() {
   showSeedOverlay();
 }
 
-function endGame() {
+// timerExpired: true only when the clock ran out.  Games ended early
+// via the End Game button are shown but never recorded — no stats,
+// no game log, no high-score entry.
+function endGame(timerExpired = false) {
   gameActive = false;
   clearInterval(timerHandle);
   clearSelection();
   $('newGameBtn').textContent = 'New Game';
 
-  const isHigh = isNewHighScore(gameScore);
-  saveHighScore(gameScore, currentSeed);
+  const isHigh = timerExpired && isNewHighScore(gameScore);
+  if (timerExpired) {
+    saveHighScore(gameScore, currentSeed);
+    recordGameForPlayer();   // no-op in Guest mode
+    appendGameLog();         // ditto
+  }
   playSound(isHigh ? 'highscore' : 'game_over');
-
-  recordGameForPlayer();   // no-op in Guest mode
 
   const count  = foundWords.size;
   const maxPts = [...allPossibleWords.values()].reduce((a, b) => a + b, 0);
   const diff   = gameScore - currentParValue;
   const parTxt = currentParValue > 0
-    ? ` · Par ${currentParValue} (${diff >= 0 ? '+' : ''}${diff})`
+    ? ` · Par ${boardParValue} · Expected ${currentParValue} (${diff >= 0 ? '+' : ''}${diff})`
     : '';
   $('finalScore').textContent  = gameScore.toLocaleString();
   $('resultStats').textContent =
-    `Seed ${String(currentSeed).padStart(6, '0')} · ${count} of ${allPossibleWords.size} words · max ${maxPts.toLocaleString()} pts${parTxt}`;
+    `Game ${formatSeed(currentSeed)} · ${count} of ${allPossibleWords.size} words · max ${maxPts.toLocaleString()} pts${parTxt}`;
 
   // Word lists — score-descending by default, tap a row for its path
   resultSort         = 'score';
   selectedResultWord = null;
+  missedShowAll      = false;   // Missed tab starts on common words only
   renderMiniBoard();
   renderResultLists();
 
-  // Tab labels
-  $('foundCount').textContent  = count;
-  $('missedCount').textContent = allPossibleWords.size - count;
+  $('foundCount').textContent = count;
   showResultTab('found');      // always open on Found tab
 
   $('overlay').classList.remove('hidden');
@@ -2148,11 +2607,13 @@ function showResultTab(tab) {
   $('tabMissed').classList.toggle('active', !onFound);
   $('resultWordList').classList.toggle('vis-hidden',  !onFound);
   $('missedWordList').classList.toggle('vis-hidden',   onFound);
+  $('missedFilterBtn').classList.toggle('vis-hidden',  onFound);
 }
 
 // ── Result word lists: sorting + mini-board path preview ──
 let resultSort         = 'score';   // 'score' (desc, default) or 'word' (asc)
 let selectedResultWord = null;      // word whose path is shown on the mini board
+let missedShowAll      = false;     // Missed tab: false = Word10K only (default)
 
 function renderResultLists() {
   const sortFn = resultSort === 'word'
@@ -2160,20 +2621,63 @@ function renderResultLists() {
     : (a, b) => b[1] - a[1];
 
   const row = ([w, p]) =>
-    `<div class="result-word-row ${selectedResultWord === w ? 'sel' : ''}"
+    `<div class="result-word-row ${selectedResultWord === w ? 'sel' : ''}${
+         WORD10K.has(w) ? '' : ' obscure'}"
           onclick="toggleWordPath('${w}')">
        <span>${w.toUpperCase()}</span><span class="rw-pts">${p}</span>
      </div>`;
 
   const foundArr = [...foundWords.entries()].sort(sortFn);
-  const missedArr = [...allPossibleWords.entries()]
-    .filter(([w]) => !foundWords.has(w))
-    .sort(sortFn);
+  let missedArr = [...allPossibleWords.entries()]
+    .filter(([w]) => !foundWords.has(w));
+  if (!missedShowAll) missedArr = missedArr.filter(([w]) => WORD10K.has(w));
+  missedArr.sort(sortFn);
 
   $('resultWordList').innerHTML = foundArr.map(row).join('');
   $('missedWordList').innerHTML = missedArr.map(row).join('');
+  $('missedCount').textContent  = missedArr.length;
+  $('missedFilterBtn').textContent = missedShowAll ? 'All Words' : 'Common';
   $('sortByWord').classList.toggle('active',  resultSort === 'word');
   $('sortByScore').classList.toggle('active', resultSort === 'score');
+}
+
+function toggleMissedFilter() {
+  missedShowAll = !missedShowAll;
+  renderResultLists();
+}
+
+// ── Per-length breakdown vs par ──────────────────────────
+function showBreakdown() {
+  if (!parModel) return;
+  const act = {};
+  for (const [w, p] of foundWords) {
+    const b = (act[lenBucket(w)] ??= [0, 0]);
+    b[0]++; b[1] += p;
+  }
+  let tw = 0, tp = 0, tew = 0, tep = 0;
+  const rows = [2, 3, 4, 5, 6, 7].map(L => {
+    const m = parModel.perLen[L] || { expFinds: 0, expPts: 0 };
+    const a = act[L] || [0, 0];
+    tw += a[0]; tp += a[1]; tew += m.expFinds; tep += m.expPts;
+    return `<tr><td>${L === 7 ? '7+' : L} letters</td>
+      <td>${a[0]}</td><td>${a[1].toLocaleString()}</td>
+      <td>${m.expFinds.toFixed(1)}</td><td>${Math.round(m.expPts).toLocaleString()}</td></tr>`;
+  }).join('');
+  $('breakdownStats').textContent =
+    `Par ${boardParValue} · Expected ${currentParValue} · Your score ${gameScore.toLocaleString()}`;
+  $('breakdownTable').innerHTML = `
+    <table class="player-stats-table">
+      <tr><th>Length</th><th>You</th><th>Pts</th><th>Par</th><th>Pts</th></tr>
+      ${rows}
+      <tr><td><strong>Total</strong></td>
+        <td><strong>${tw}</strong></td><td><strong>${tp.toLocaleString()}</strong></td>
+        <td><strong>${tew.toFixed(1)}</strong></td><td><strong>${Math.round(tep).toLocaleString()}</strong></td></tr>
+    </table>`;
+  $('breakdownModal').classList.remove('hidden');
+}
+
+function closeBreakdown() {
+  $('breakdownModal').classList.add('hidden');
 }
 
 function setResultSort(key) {
@@ -2273,13 +2777,13 @@ function selectPlayer(i) {
   playersData.active = i;
   savePlayersData();
   renderPlayerButtons();
-  if (gameActive && boardPotential > 0) computeAndShowPar();   // par follows the player
+  if (gameActive && parModel) computeAndShowPar();   // Expected follows the player
 }
 
 function selectGuest() {
   guestMode = true;    // deliberately NOT persisted — a reload reverts
   renderPlayerButtons();
-  if (gameActive && boardPotential > 0) computeAndShowPar();
+  if (gameActive && parModel) computeAndShowPar();
 }
 
 function openPlayerEdit() {
@@ -2370,17 +2874,17 @@ function renderPlayerStats(pl) {
   if (m.length) {
     const avg   = Math.round(m.reduce((a, b) => a + b.score, 0) / m.length);
     const best  = Math.max(...m.map(x => x.score));
-    const ratio = playerRatio(pl);
-    const vsPar = m.filter(x => x.par > 0);
-    const avgVsPar = vsPar.length
-      ? Math.round(vsPar.reduce((a, b) => a + (b.score - b.par), 0) / vsPar.length)
+    const ratio = perfFactor(pl);
+    const vsExp = m.filter(x => (x.exp ?? x.par) > 0);
+    const avgVsExp = vsExp.length
+      ? Math.round(vsExp.reduce((a, b) => a + (b.score - (b.exp ?? b.par)), 0) / vsExp.length)
       : 0;
     scoreRows = `
       <tr><td>Games (these settings)</td><td colspan="2">${m.length} of ${g.length}</td></tr>
       <tr><td>Average score</td><td colspan="2">${avg.toLocaleString()}</td></tr>
       <tr><td>Best score</td><td colspan="2">${best.toLocaleString()}</td></tr>
-      <tr><td>Avg vs par</td><td colspan="2">${avgVsPar >= 0 ? '+' : ''}${avgVsPar}</td></tr>
-      <tr><td>Skill factor</td><td colspan="2">${Math.round(ratio * 100)}% of average</td></tr>`;
+      <tr><td>Avg vs expected</td><td colspan="2">${avgVsExp >= 0 ? '+' : ''}${avgVsExp}</td></tr>
+      <tr><td>Performance vs par</td><td colspan="2">${Math.round(ratio * 100)}%</td></tr>`;
   } else {
     scoreRows = `
       <tr><td>Games (these settings)</td><td colspan="2">0 of ${g.length}</td></tr>
@@ -2457,6 +2961,127 @@ function closeScoring() {
   $('settingsOverlay').classList.remove('hidden');
 }
 
+function openParSettings() {
+  syncParInputs();
+  $('gameLogCount').textContent = gameLogCount();
+  $('settingsOverlay').classList.add('hidden');
+  $('parModal').classList.remove('hidden');
+}
+
+function closeParSettings() {
+  $('parModal').classList.add('hidden');
+  $('settingsOverlay').classList.remove('hidden');
+}
+
+// Write parSettings values into the modal's inputs
+function syncParInputs() {
+  for (let L = 2; L <= 7; L++) {
+    $('parProb' + L).value = Math.round(parSettings.probLen[L] * 1000) / 10;   // as %
+    $('parCap'  + L).value = parSettings.capLen[L];
+  }
+  $('parObsBase').value  = Math.round(parSettings.obscureBase  * 100);
+  $('parObsDecay').value = Math.round(parSettings.obscureDecay * 100);
+  $('parTurnDamp').value = parSettings.turnDamping;
+  $('parTimeExp').value  = parSettings.timeExponent;
+  $('parHistWin').value  = parSettings.histWindow;
+  $('parBestOf').value   = parSettings.bestOf;
+  $('parShowPar').checked = parSettings.showPar;
+}
+
+// Read the modal's inputs back into parSettings (with clamping)
+function onParChange() {
+  const num = (id, lo, hi, fb) => {
+    let v = parseFloat($(id).value);
+    if (isNaN(v)) v = fb;
+    v = Math.min(hi, Math.max(lo, v));
+    $(id).value = v;
+    return v;
+  };
+  for (let L = 2; L <= 7; L++) {
+    parSettings.probLen[L] = num('parProb' + L, 0, 100, PAR_DEFAULTS.probLen[L] * 100) / 100;
+    parSettings.capLen[L]  = num('parCap'  + L, 0, 99,  PAR_DEFAULTS.capLen[L]);
+  }
+  parSettings.obscureBase  = num('parObsBase',  0, 100, PAR_DEFAULTS.obscureBase  * 100) / 100;
+  parSettings.obscureDecay = num('parObsDecay', 1, 100, PAR_DEFAULTS.obscureDecay * 100) / 100;
+  parSettings.turnDamping  = num('parTurnDamp', 0, 1,   PAR_DEFAULTS.turnDamping);
+  parSettings.timeExponent = num('parTimeExp', 0.1, 2,  PAR_DEFAULTS.timeExponent);
+  parSettings.histWindow   = Math.round(num('parHistWin', 1, 100, PAR_DEFAULTS.histWindow));
+  parSettings.bestOf       = Math.round(num('parBestOf',  1, 20,  PAR_DEFAULTS.bestOf));
+  parSettings.showPar      = $('parShowPar').checked;
+  saveSettings();
+  if (gameActive && parModel) computeAndShowPar();   // live refresh mid-game
+  else if (parModel) updateParHeader();
+}
+
+function resetParSettings() {
+  parSettings = clonePar(PAR_DEFAULTS);
+  syncParInputs();
+  saveSettings();
+  if (gameActive && parModel) computeAndShowPar();
+}
+
+// ── Color customisation ──────────────────────────────────
+const COLOR_DEFAULTS = { tile: '#ffffff', bg: '#0d1117', text: '#000000' };
+let settingColors = { ...COLOR_DEFAULTS };
+
+function hexToRgb(hex) {
+  return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function applyColors() {
+  const s = document.documentElement.style;
+  s.setProperty('--tile-bg',   settingColors.tile);
+  s.setProperty('--bg',        settingColors.bg);
+  s.setProperty('--tile-text', settingColors.text);
+}
+
+const COLOR_INPUT_IDS = { tile: 'colorTile', bg: 'colorBg', text: 'colorText' };
+const COLOR_SWATCH_IDS = { tile: 'swatchTile', bg: 'swatchBg', text: 'swatchText' };
+
+function syncColorInputs() {
+  for (const key of Object.keys(COLOR_INPUT_IDS)) {
+    const [r, g, b] = hexToRgb(settingColors[key]);
+    $(COLOR_INPUT_IDS[key] + 'R').value = r;
+    $(COLOR_INPUT_IDS[key] + 'G').value = g;
+    $(COLOR_INPUT_IDS[key] + 'B').value = b;
+    $(COLOR_SWATCH_IDS[key]).style.background = settingColors[key];
+  }
+}
+
+function onColorChange() {
+  for (const key of Object.keys(COLOR_INPUT_IDS)) {
+    const read = ch => {
+      let v = parseInt($(COLOR_INPUT_IDS[key] + ch).value);
+      return isNaN(v) ? 0 : Math.min(255, Math.max(0, v));
+    };
+    settingColors[key] = rgbToHex(read('R'), read('G'), read('B'));
+    $(COLOR_SWATCH_IDS[key]).style.background = settingColors[key];
+  }
+  applyColors();
+  saveSettings();
+}
+
+function resetColors() {
+  settingColors = { ...COLOR_DEFAULTS };
+  applyColors();
+  syncColorInputs();
+  saveSettings();
+}
+
+function openColorSettings() {
+  syncColorInputs();
+  $('settingsOverlay').classList.add('hidden');
+  $('colorModal').classList.remove('hidden');
+}
+
+function closeColorSettings() {
+  $('colorModal').classList.add('hidden');
+  $('settingsOverlay').classList.remove('hidden');
+}
+
 // Syncs board-gate inputs → JS vars → persists
 function onBoardGateChange() {
   const minWords  = Math.max(1,  parseInt($('settingMinWords').value)       || 40);
@@ -2512,6 +3137,7 @@ function onSettingChange() {
 
   settingAntiCluster  = $('settingAntiCluster').checked;
   settingColorCorrect = $('settingColorCorrect').checked;
+  settingShowMatch    = $('settingShowMatch').checked;
   settingScoreLeft    = $('settingScoreLeft').checked;
   $('wordDisplay').classList.toggle('score-left', settingScoreLeft);
 
@@ -2544,7 +3170,10 @@ function onScoringChange() {
 
   if (boardData.length) {
     renderBoard();                              // badge visibility may have changed
-    if (TRIE) allPossibleWords = findAllWords(); // keep missed-word scores consistent
+    if (TRIE) {
+      allPossibleWords = findAllWords();        // keep missed-word scores consistent
+      if (gameActive) computeAndShowPar();      // par follows the scoring rules
+    }
   }
   saveSettings();
 }
@@ -2569,7 +3198,8 @@ function importSettings() { $('importFileInput').click(); }
 const KNOWN_SETTING_KEYS = [
   'touchRadius', 'minVowels', 'maxVowels', 'maxRare', 'maxDupes', 'antiCluster',
   'minWords', 'topCount', 'topPts', 'maxTries', 'gameTime', 'colorCorrect', 'scoreLeft',
-  'stdMults', 'lenPct', 'lenBase', 'genMult',
+  'showMatch', 'colors',
+  'stdMults', 'lenPct', 'lenBase', 'genMult', 'par',
   'fullMinEnabled', 'fullMinWords', 'fullTopEnabled', 'fullTopCount', 'fullTopPts',
 ];
 
@@ -2609,11 +3239,14 @@ function saveSettings() {
     maxTries:           QUALITY_MAX_TRIES,
     gameTime:           settingGameTime,
     colorCorrect:       settingColorCorrect,
+    showMatch:          settingShowMatch,
+    colors:             settingColors,
     scoreLeft:          settingScoreLeft,
     stdMults:           settingStdMults,
     lenPct:             settingLenPct,
     lenBase:            settingLenBase,
     genMult:            settingGenMult,
+    par:                parSettings,
     fullMinEnabled:     QUALITY_FULL_MIN_ENABLED,
     fullMinWords:       QUALITY_FULL_MIN_WORDS,
     fullTopEnabled:     QUALITY_FULL_TOP_ENABLED,
@@ -2622,8 +3255,11 @@ function saveSettings() {
   }));
 }
 
-// Restore all settings from localStorage on page load
-(function loadSettings() {
+// Restore all settings from localStorage once the FULL document is
+// parsed — several settings inputs live in modals below this script,
+// so running immediately would hit missing elements and silently
+// abort the restore partway through.
+document.addEventListener('DOMContentLoaded', function loadSettings() {
   try {
     const raw = localStorage.getItem('wordswipe_settings');
     if (!raw) return;
@@ -2646,8 +3282,21 @@ function saveSettings() {
     if (s.maxTries      != null) { QUALITY_MAX_TRIES        = s.maxTries;      $('settingMaxTries').value             = s.maxTries;      }
     if (s.gameTime      != null) { settingGameTime           = s.gameTime;      $('settingGameTime').value             = s.gameTime;      }
     if (s.colorCorrect  != null) { settingColorCorrect       = Boolean(s.colorCorrect);  $('settingColorCorrect').checked       = settingColorCorrect;       }
+    if (s.showMatch     != null) { settingShowMatch          = Boolean(s.showMatch);     $('settingShowMatch').checked          = settingShowMatch;          }
+    if (s.colors != null && typeof s.colors === 'object') {
+      settingColors = { ...COLOR_DEFAULTS, ...s.colors };
+      applyColors();
+      syncColorInputs();
+    }
     if (s.scoreLeft     != null) { settingScoreLeft          = Boolean(s.scoreLeft);     $('settingScoreLeft').checked          = settingScoreLeft;
                                    $('wordDisplay').classList.toggle('score-left', settingScoreLeft); }
+    if (s.par != null && typeof s.par === 'object') {
+      const d = clonePar(PAR_DEFAULTS);
+      parSettings = { ...d, ...s.par,
+        probLen: { ...d.probLen, ...(s.par.probLen || {}) },
+        capLen:  { ...d.capLen,  ...(s.par.capLen  || {}) } };
+      syncParInputs();
+    }
     if (s.stdMults != null) { settingStdMults = Boolean(s.stdMults); $('settingStdMults').checked = settingStdMults; }
     if (s.lenPct   != null) { settingLenPct   = s.lenPct;   $('settingLenPct').value   = s.lenPct;   }
     if (s.lenBase  != null) { settingLenBase  = s.lenBase;  $('settingLenBase').value  = s.lenBase;  }
@@ -2658,16 +3307,125 @@ function saveSettings() {
     if (s.fullTopCount  != null) { QUALITY_FULL_TOP_COUNT    = s.fullTopCount;  $('settingFullTopCount').value         = s.fullTopCount;  }
     if (s.fullTopPts    != null) { QUALITY_FULL_TOP_PTS      = s.fullTopPts;    $('settingFullTopPts').value           = s.fullTopPts;    }
   } catch (_) {}
-})();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  INTRO ANIMATION
+//  Nine face-down tiles lie dumped in a pile; one by one (top of
+//  the pile first) each flips over and slides along a slight arc
+//  to spell WORD / SWIPE.  Any tap or key press skips straight to
+//  the New Game screen.
+// ═══════════════════════════════════════════════════════════
+let introActive        = true;
+let introExitRequested = false;
+
+function startIntro() {
+  const stage = $('introOverlay');
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const T   = Math.max(40, Math.min(72, W / 8.5, H / 11));   // tile size
+  const gap = T * 0.16;
+
+  // Target slots: WORD on row 1, SWIPE on row 2, centered
+  const rows    = [['W','O','R','D'], ['S','W','I','P','E']];
+  const y1      = H * 0.24;
+  const targets = [];
+  rows.forEach((letters, r) => {
+    const total = letters.length * T + (letters.length - 1) * gap;
+    const x0    = (W - total) / 2;
+    letters.forEach((L, i) =>
+      targets.push({ letter: L, x: x0 + i * (T + gap), y: y1 + r * (T + gap) }));
+  });
+
+  // The pile: fixed scatter offsets (× tile size) + rotations so it
+  // always looks freshly dumped, tiles overlapping at angles.
+  const px = W / 2 - T / 2, py = H * 0.66;
+  const scatter = [
+    [-0.55,  0.10, -24], [ 0.45, -0.05,  35], [-0.15, -0.28, -10],
+    [ 0.10,  0.30,  60], [-0.80, -0.15,  15], [ 0.75,  0.25, -45],
+    [-0.35,  0.42,   8], [ 0.35, -0.40, -30], [ 0.00,  0.02,  20],
+  ];
+
+  targets.forEach((t, i) => {
+    const [sx, sy, rot] = scatter[i];
+    t.startX = px + sx * T;
+    t.startY = py + sy * T;
+    t.rot    = rot;
+    const wrap = document.createElement('div');
+    wrap.className    = 'intro-tile';
+    wrap.style.width  = T + 'px';
+    wrap.style.height = T + 'px';
+    wrap.style.zIndex = String(20 - i);      // next tile to move is on top
+    wrap.style.transform = `translate(${t.startX}px, ${t.startY}px) rotate(${rot}deg)`;
+    wrap.innerHTML = `
+      <div class="intro-tile-inner">
+        <div class="intro-face intro-back"></div>
+        <div class="intro-face intro-front" style="font-size:${T * 0.52}px">${t.letter}<span
+             class="intro-pts" style="font-size:${T * 0.2}px">${LETTER_CONFIG[t.letter].s}</span></div>
+      </div>`;
+    stage.appendChild(wrap);
+    t.el = wrap;
+  });
+
+  // Flip + slide each tile, staggered; the path bows sideways a
+  // little (alternating) like a finger dragging it into place.
+  targets.forEach((t, i) => {
+    const delay = 400 + i * 340;
+    const midX  = (t.startX + t.x) / 2 + (i % 2 ? 1 : -1) * T * 0.9;
+    const midY  = (t.startY + t.y) / 2 - T * 0.35;
+    t.el.animate([
+      { transform: `translate(${t.startX}px, ${t.startY}px) rotate(${t.rot}deg)` },
+      { transform: `translate(${midX}px, ${midY}px) rotate(${t.rot / 2}deg)`, offset: 0.5 },
+      { transform: `translate(${t.x}px, ${t.y}px) rotate(0deg)` },
+    ], { duration: 680, delay, easing: 'ease-in-out', fill: 'both' });
+    t.el.querySelector('.intro-tile-inner').animate([
+      { transform: 'rotateY(0deg)' },
+      { transform: 'rotateY(180deg)' },
+    ], { duration: 430, delay: delay + 40, easing: 'ease-out', fill: 'both' });
+  });
+
+  const totalMs = 400 + targets.length * 340 + 780;
+  setTimeout(() => { if (introActive) $('introHint').classList.add('show'); }, totalMs);
+
+  stage.addEventListener('pointerdown', requestExitIntro);
+  document.addEventListener('keydown', introKeySkip, true);
+}
+
+function introKeySkip(e) {
+  if (!introActive) return;
+  requestExitIntro();
+  e.stopPropagation();
+}
+
+function requestExitIntro() {
+  if (!introActive) return;
+  if (!dictReady) {                 // dictionaries still loading — exit once ready
+    introExitRequested = true;
+    $('introHint').textContent = 'Loading…';
+    $('introHint').classList.add('show');
+    return;
+  }
+  exitIntro();
+}
+
+function exitIntro() {
+  if (!introActive) return;
+  introActive = false;
+  document.removeEventListener('keydown', introKeySkip, true);
+  $('introOverlay').classList.add('hidden');
+  showSeedOverlay();
+}
 
 // ═══════════════════════════════════════════════════════════
 //  START
 // ═══════════════════════════════════════════════════════════
 loadSounds();
+let dictReady = false;
 Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
   TRIE = buildTrie(WORDS);   // build once; reused every game
-  showSeedOverlay();
+  dictReady = true;
+  if (introExitRequested) exitIntro();
 });
+startIntro();
 </script>
   <!-- ══════════════════════════════════════════════════════════
        BOARD GATE SUB-MODAL
@@ -2850,6 +3608,158 @@ Promise.all([loadDictionary(), loadWord10K()]).finally(() => {
       </div>
 
       <button class="play-btn" onclick="closeScoring()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
+
+  <!-- ══ Par sub-modal (model constants + game log) ══ -->
+  <div id="parModal" class="overlay hidden">
+    <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+      <h2 style="text-align:center;margin-bottom:14px">⚙ Par</h2>
+
+      <div class="setting-section">
+        <div class="setting-toggle-row">
+          <div>
+            <span class="setting-toggle-label">Show Par in header</span>
+            <p class="setting-desc" style="margin:2px 0 0">
+              Off: the header shows Expected — your handicap-adjusted
+              target. On: it shows the board's Par (average player).
+            </p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="parShowPar" onchange="onParChange()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Base Find Chance (%)</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Chance an average player finds a common word of each length.
+        </p>
+        <div class="setting-number-row"><span class="setting-number-label">2 letters</span>
+          <input type="number" class="setting-number" id="parProb2" min="0" max="100" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">3 letters</span>
+          <input type="number" class="setting-number" id="parProb3" min="0" max="100" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">4 letters</span>
+          <input type="number" class="setting-number" id="parProb4" min="0" max="100" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">5 letters</span>
+          <input type="number" class="setting-number" id="parProb5" min="0" max="100" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">6 letters</span>
+          <input type="number" class="setting-number" id="parProb6" min="0" max="100" step="0.5" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">7+ letters</span>
+          <input type="number" class="setting-number" id="parProb7" min="0" max="100" step="0.5" onchange="onParChange()"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Max Expected Finds</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Ceiling on expected words per length in a 2:00 game — rich
+          boards squash down to these. Scales with the time limit.
+        </p>
+        <div class="setting-number-row"><span class="setting-number-label">2 letters</span>
+          <input type="number" class="setting-number" id="parCap2" min="0" max="99" step="0.5" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">3 letters</span>
+          <input type="number" class="setting-number" id="parCap3" min="0" max="99" step="0.5" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">4 letters</span>
+          <input type="number" class="setting-number" id="parCap4" min="0" max="99" step="0.5" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">5 letters</span>
+          <input type="number" class="setting-number" id="parCap5" min="0" max="99" step="0.5" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">6 letters</span>
+          <input type="number" class="setting-number" id="parCap6" min="0" max="99" step="0.5" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">7+ letters</span>
+          <input type="number" class="setting-number" id="parCap7" min="0" max="99" step="0.5" onchange="onParChange()"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Rare-Word Penalty</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Words outside the common 10K list are multiplied by
+          Base% × Decay%^(letters−2) — longer rare words count less.
+        </p>
+        <div class="setting-number-row"><span class="setting-number-label">Base (%)</span>
+          <input type="number" class="setting-number" id="parObsBase" min="0" max="100" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">Decay per letter (%)</span>
+          <input type="number" class="setting-number" id="parObsDecay" min="1" max="100" step="1" onchange="onParChange()"></div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Other Factors</div>
+        <div class="setting-number-row"><span class="setting-number-label">Turn damping</span>
+          <input type="number" class="setting-number" id="parTurnDamp" min="0" max="1" step="0.01" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">Time exponent</span>
+          <input type="number" class="setting-number" id="parTimeExp" min="0.1" max="2" step="0.1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">Handicap window (games)</span>
+          <input type="number" class="setting-number" id="parHistWin" min="1" max="100" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">Best-of (games kept)</span>
+          <input type="number" class="setting-number" id="parBestOf" min="1" max="20" step="1" onchange="onParChange()"></div>
+      </div>
+
+      <div class="setting-section">
+        <button class="play-btn" onclick="resetParSettings()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+          Reset to Defaults
+        </button>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Game Log</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Every completed game is logged word-by-word
+          (<span id="gameLogCount">0</span> games so far) for
+          par analysis across players and devices.
+        </p>
+        <div style="display:flex;gap:8px">
+          <button class="play-btn" onclick="exportGameLog()" style="flex:1;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">Export</button>
+          <button class="play-btn" onclick="clearGameLog()" style="flex:1;background:#7f1d1d;color:#fecaca;font-size:14px;padding:10px">Clear</button>
+        </div>
+      </div>
+
+      <button class="play-btn" onclick="closeParSettings()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
+
+  <!-- ══ Color sub-modal ══ -->
+  <div id="colorModal" class="overlay hidden">
+    <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
+      <h2 style="text-align:center;margin-bottom:14px">🎨 Color</h2>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Tile Color</div>
+        <div class="color-row">
+          <span class="color-swatch" id="swatchTile"></span>
+          R <input type="number" class="setting-number" id="colorTileR" min="0" max="255" oninput="onColorChange()">
+          G <input type="number" class="setting-number" id="colorTileG" min="0" max="255" oninput="onColorChange()">
+          B <input type="number" class="setting-number" id="colorTileB" min="0" max="255" oninput="onColorChange()">
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Background Color</div>
+        <div class="color-row">
+          <span class="color-swatch" id="swatchBg"></span>
+          R <input type="number" class="setting-number" id="colorBgR" min="0" max="255" oninput="onColorChange()">
+          G <input type="number" class="setting-number" id="colorBgG" min="0" max="255" oninput="onColorChange()">
+          B <input type="number" class="setting-number" id="colorBgB" min="0" max="255" oninput="onColorChange()">
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <div class="setting-section-title">Text Color (tile letters)</div>
+        <div class="color-row">
+          <span class="color-swatch" id="swatchText"></span>
+          R <input type="number" class="setting-number" id="colorTextR" min="0" max="255" oninput="onColorChange()">
+          G <input type="number" class="setting-number" id="colorTextG" min="0" max="255" oninput="onColorChange()">
+          B <input type="number" class="setting-number" id="colorTextB" min="0" max="255" oninput="onColorChange()">
+        </div>
+      </div>
+
+      <div class="setting-section">
+        <button class="play-btn" onclick="resetColors()" style="width:100%;background:#374151;color:#e5e7eb;font-size:14px;padding:10px">
+          Reset to Defaults
+        </button>
+      </div>
+
+      <button class="play-btn" onclick="closeColorSettings()" style="width:100%;margin-top:4px">Done</button>
     </div>
   </div>
 
