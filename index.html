@@ -706,6 +706,21 @@
       border: 1px solid #4b5563;
       margin-right: 6px;
       flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    /* Invisible native color input covering the swatch — tapping it
+       opens the system color picker (wheel/spectrum + sliders) */
+    .color-pick {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      border: none;
+      padding: 0;
+      cursor: pointer;
     }
     .color-row .setting-number { width: 56px; }
 
@@ -857,7 +872,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.72</span>
+      <span class="version-label">v0.74</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -981,7 +996,8 @@
     <div class="quality-retry-row">
       <span>Try</span>
       <input class="quality-retry-input" id="qualityRetryInput"
-             type="number" min="1" max="10000" value="150" inputmode="numeric">
+             type="number" min="1" max="10000" value="150" inputmode="numeric"
+             data-label="Additional seeds to try">
       <span>more seeds</span>
       <button class="play-btn" onclick="retryQualitySearch()"
               style="padding:8px 18px;font-size:14px">Retry</button>
@@ -1132,7 +1148,7 @@
 <script>
 // Single source of truth for the displayed version (sw.js CACHE_NAME
 // must be bumped in step with it on every build).
-const APP_VERSION = 'v0.72';
+const APP_VERSION = 'v0.74';
 document.querySelector('.version-label').textContent = APP_VERSION;
 
 // ═══════════════════════════════════════════════════════════
@@ -1784,6 +1800,7 @@ function startFromSeed() {
 
 // Physical keyboard still works while the seed screen is open
 document.addEventListener('keydown', e => {
+  if (!$('numpadModal').classList.contains('hidden')) return;   // numpad owns keys
   if ($('seedOverlay').classList.contains('hidden')) return;
   if      (/^[0-9]$/.test(e.key))  seedKey(e.key);
   else if (e.key === 'Backspace')  seedBackspace();
@@ -1791,6 +1808,79 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape' || e.key === 'Delete') seedClear();
   else return;
   e.preventDefault();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  SHARED NUMERIC KEYPAD
+//  Every number input in the settings opens this keypad instead
+//  of the iOS keyboard (the inputs are made read-only so iOS
+//  never shows its own).  OK writes the value back and fires the
+//  input's normal change handlers.
+// ═══════════════════════════════════════════════════════════
+let numpadTarget = null;
+let numpadValue  = '';
+
+function openNumpad(input) {
+  numpadTarget = input;
+  numpadValue  = String(input.value ?? '');
+  const label =
+    input.closest('.setting-number-row')?.querySelector('.setting-number-label')?.textContent ||
+    input.dataset.label || 'Enter number';
+  $('numpadTitle').textContent = label.trim();
+  updateNumpadDisplay();
+  $('numpadModal').classList.remove('hidden');
+}
+
+function updateNumpadDisplay() {
+  const el = $('numpadDisplay');
+  el.textContent = numpadValue === '' ? '0' : numpadValue;
+  el.classList.toggle('placeholder', numpadValue === '');
+}
+
+function numpadKey(d) {
+  if (d === '.' && numpadValue.includes('.')) return;
+  if (numpadValue.length >= 7) return;
+  numpadValue += d;
+  updateNumpadDisplay();
+}
+
+function numpadBackspace() { numpadValue = numpadValue.slice(0, -1); updateNumpadDisplay(); }
+function numpadClear()     { numpadValue = '';                       updateNumpadDisplay(); }
+
+function numpadCancel() {
+  $('numpadModal').classList.add('hidden');
+  numpadTarget = null;
+}
+
+function numpadOk() {
+  if (numpadTarget && numpadValue !== '' && numpadValue !== '.') {
+    numpadTarget.value = numpadValue;
+    // fire both so oninput= and onchange= handlers all run
+    numpadTarget.dispatchEvent(new Event('input'));
+    numpadTarget.dispatchEvent(new Event('change'));
+  }
+  numpadCancel();
+}
+
+// Physical keyboard drives the numpad too (capture phase so the
+// seed-screen handler never sees these keys)
+document.addEventListener('keydown', e => {
+  if ($('numpadModal').classList.contains('hidden')) return;
+  if      (/^[0-9.]$/.test(e.key)) numpadKey(e.key);
+  else if (e.key === 'Backspace')  numpadBackspace();
+  else if (e.key === 'Enter')      numpadOk();
+  else if (e.key === 'Escape')     numpadCancel();
+  else return;
+  e.stopPropagation();
+  e.preventDefault();
+}, true);
+
+// Route every numeric input through the keypad
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('input[type="number"]').forEach(inp => {
+    inp.readOnly = true;                          // suppress the iOS keyboard
+    inp.addEventListener('click', () => openNumpad(inp));
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -3056,6 +3146,8 @@ function applyColors() {
 const COLOR_INPUT_IDS = { tile: 'colorTile', bg: 'colorBg', text: 'colorText' };
 const COLOR_SWATCH_IDS = { tile: 'swatchTile', bg: 'swatchBg', text: 'swatchText' };
 
+const COLOR_PICKER_IDS = { tile: 'pickerTile', bg: 'pickerBg', text: 'pickerText' };
+
 function syncColorInputs() {
   for (const key of Object.keys(COLOR_INPUT_IDS)) {
     const [r, g, b] = hexToRgb(settingColors[key]);
@@ -3063,7 +3155,17 @@ function syncColorInputs() {
     $(COLOR_INPUT_IDS[key] + 'G').value = g;
     $(COLOR_INPUT_IDS[key] + 'B').value = b;
     $(COLOR_SWATCH_IDS[key]).style.background = settingColors[key];
+    $(COLOR_PICKER_IDS[key]).value = settingColors[key];
   }
+}
+
+// Native color picker (tap the swatch) — fires continuously while
+// dragging in the system picker, so the game recolors live.
+function onColorPicked(key, hex) {
+  settingColors[key] = hex;
+  applyColors();
+  syncColorInputs();
+  saveSettings();
 }
 
 function onColorChange() {
@@ -3761,7 +3863,7 @@ startIntro();
       <div class="setting-section">
         <div class="setting-section-title">Tile Color</div>
         <div class="color-row">
-          <span class="color-swatch" id="swatchTile"></span>
+          <span class="color-swatch" id="swatchTile"><input type="color" class="color-pick" id="pickerTile" oninput="onColorPicked('tile', this.value)"></span>
           R <input type="number" class="setting-number" id="colorTileR" min="0" max="255" oninput="onColorChange()">
           G <input type="number" class="setting-number" id="colorTileG" min="0" max="255" oninput="onColorChange()">
           B <input type="number" class="setting-number" id="colorTileB" min="0" max="255" oninput="onColorChange()">
@@ -3771,7 +3873,7 @@ startIntro();
       <div class="setting-section">
         <div class="setting-section-title">Background Color</div>
         <div class="color-row">
-          <span class="color-swatch" id="swatchBg"></span>
+          <span class="color-swatch" id="swatchBg"><input type="color" class="color-pick" id="pickerBg" oninput="onColorPicked('bg', this.value)"></span>
           R <input type="number" class="setting-number" id="colorBgR" min="0" max="255" oninput="onColorChange()">
           G <input type="number" class="setting-number" id="colorBgG" min="0" max="255" oninput="onColorChange()">
           B <input type="number" class="setting-number" id="colorBgB" min="0" max="255" oninput="onColorChange()">
@@ -3781,7 +3883,7 @@ startIntro();
       <div class="setting-section">
         <div class="setting-section-title">Text Color (tile letters)</div>
         <div class="color-row">
-          <span class="color-swatch" id="swatchText"></span>
+          <span class="color-swatch" id="swatchText"><input type="color" class="color-pick" id="pickerText" oninput="onColorPicked('text', this.value)"></span>
           R <input type="number" class="setting-number" id="colorTextR" min="0" max="255" oninput="onColorChange()">
           G <input type="number" class="setting-number" id="colorTextG" min="0" max="255" oninput="onColorChange()">
           B <input type="number" class="setting-number" id="colorTextB" min="0" max="255" oninput="onColorChange()">
@@ -3837,6 +3939,36 @@ startIntro();
       </div>
 
       <button class="play-btn" onclick="closePlayerEdit()" style="width:100%;margin-top:4px">Done</button>
+    </div>
+  </div>
+
+  <!-- ══ Shared numeric keypad (all number settings) ══ -->
+  <div id="numpadModal" class="overlay hidden" style="z-index:400">
+    <div class="overlay-box" style="width:min(300px,90vw)">
+      <h2 id="numpadTitle" style="font-size:16px;text-align:center;margin-bottom:12px">Enter number</h2>
+      <div class="seed-input" id="numpadDisplay"
+           style="width:100%;box-sizing:border-box;margin:0 0 16px;font-size:24px;letter-spacing:3px;text-indent:3px"></div>
+      <div class="seed-keypad" style="margin-bottom:14px">
+        <button class="seed-key" onclick="numpadKey('1')">1</button>
+        <button class="seed-key" onclick="numpadKey('2')">2</button>
+        <button class="seed-key" onclick="numpadKey('3')">3</button>
+        <button class="seed-key" onclick="numpadKey('4')">4</button>
+        <button class="seed-key" onclick="numpadKey('5')">5</button>
+        <button class="seed-key" onclick="numpadKey('6')">6</button>
+        <button class="seed-key" onclick="numpadKey('7')">7</button>
+        <button class="seed-key" onclick="numpadKey('8')">8</button>
+        <button class="seed-key" onclick="numpadKey('9')">9</button>
+        <button class="seed-key" onclick="numpadKey('.')">.</button>
+        <button class="seed-key" onclick="numpadKey('0')">0</button>
+        <button class="seed-key fn" onclick="numpadBackspace()" title="Backspace">&#9003;</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="seed-key fn clr" style="flex:1" onclick="numpadClear()">CLEAR</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="play-btn" onclick="numpadCancel()" style="flex:1;background:#374151;color:#e5e7eb;padding:12px 8px;font-size:15px">Cancel</button>
+        <button class="play-btn" onclick="numpadOk()" style="flex:1;padding:12px 8px;font-size:15px">OK</button>
+      </div>
     </div>
   </div>
 </body>
