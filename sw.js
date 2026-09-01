@@ -2,7 +2,7 @@
 // CACHE_NAME must change on every deploy (keep in sync with the
 // APP_VERSION in index.html).  A byte-different sw.js is what
 // triggers the browser to install the update.
-const CACHE_NAME = 'word-swipe-v0.71';
+const CACHE_NAME = 'word-swipe-v0.72';
 
 // Must-have for the app shell to work offline.
 const CRITICAL_ASSETS = [
@@ -15,7 +15,7 @@ const CRITICAL_ASSETS = [
 // can never break the install (cache.addAll is all-or-nothing).
 const OPTIONAL_ASSETS = [
   '/words.txt',
-  '/word10k.txt',
+  '/common.txt',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-180.png',

@@ -857,7 +857,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.71</span>
+      <span class="version-label">v0.72</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1132,7 +1132,7 @@
 <script>
 // Single source of truth for the displayed version (sw.js CACHE_NAME
 // must be bumped in step with it on every build).
-const APP_VERSION = 'v0.71';
+const APP_VERSION = 'v0.72';
 document.querySelector('.version-label').textContent = APP_VERSION;
 
 // ═══════════════════════════════════════════════════════════
@@ -1278,9 +1278,22 @@ const BUILTIN_WORD10K = `aa ab ad ae ag ah ai al am an ar as at aw ax ay ba be b
 
 let WORD10K = new Set(BUILTIN_WORD10K.trim().split(/\s+/).filter(w => w.length >= 2));
 
+// common.txt lists ~32K game-valid words in TRUE FREQUENCY ORDER
+// (OpenSubtitles corpus).  The "common" set is the first
+// settingCommonCutoff entries, so the cutoff is tunable; the
+// unranked built-in list above is the offline/first-load fallback.
+let COMMON_RANKED = null;   // ranked array when common.txt loaded
+
+function rebuildCommonSet() {
+  if (COMMON_RANKED) {
+    WORD10K = new Set(COMMON_RANKED.slice(0, settingCommonCutoff));
+  }
+  // no ranked list → keep the builtin fallback set as-is
+}
+
 async function loadWord10K() {
   try {
-    const res = await fetch('word10k.txt');
+    const res = await fetch('common.txt');
     if (!res.ok) return;
     const text  = await res.text();
     const words = text
@@ -1288,8 +1301,9 @@ async function loadWord10K() {
       .map(l => l.trim().toLowerCase())
       .filter(l => l.length >= 2 && !l.startsWith('#'));
     if (words.length > 100) {
-      WORD10K = new Set([...WORD10K, ...words]);
-      console.log(`Word10K: ${WORD10K.size.toLocaleString()} quality words loaded`);
+      COMMON_RANKED = words;
+      rebuildCommonSet();
+      console.log(`Common list: ${COMMON_RANKED.length.toLocaleString()} ranked words, cutoff ${settingCommonCutoff}`);
     }
   } catch (_) {}
 }
@@ -2469,6 +2483,7 @@ let settingAntiCluster    = true;   // spread vowels/consonants evenly
 let settingGameTime       = 120;    // game duration in seconds
 let settingColorCorrect   = true;   // show green tiles when word is valid
 let settingShowMatch      = true;   // live match colors while swiping; off = reveal on release
+let settingCommonCutoff   = 10000;  // top-N frequency rank that counts as "common"
 let settingScoreLeft      = false;  // word score left of the word instead of right
 
 // Scoring options
@@ -3084,6 +3099,14 @@ function closeColorSettings() {
 
 // Syncs board-gate inputs → JS vars → persists
 function onBoardGateChange() {
+  const cutoff    = Math.max(100, parseInt($('settingCommonCutoff').value)  || 10000);
+  $('settingCommonCutoff').value = cutoff;
+  if (cutoff !== settingCommonCutoff) {
+    settingCommonCutoff = cutoff;
+    rebuildCommonSet();
+    if (gameActive && parModel) computeAndShowPar();      // common set feeds par
+    if (!$('overlay').classList.contains('hidden')) renderResultLists();
+  }
   const minWords  = Math.max(1,  parseInt($('settingMinWords').value)       || 40);
   const topCount  = Math.max(0,  parseInt($('settingTopCount').value)       || 2);
   const topPts    = Math.max(10, parseInt($('settingTopPts').value)         || 100);
@@ -3198,7 +3221,7 @@ function importSettings() { $('importFileInput').click(); }
 const KNOWN_SETTING_KEYS = [
   'touchRadius', 'minVowels', 'maxVowels', 'maxRare', 'maxDupes', 'antiCluster',
   'minWords', 'topCount', 'topPts', 'maxTries', 'gameTime', 'colorCorrect', 'scoreLeft',
-  'showMatch', 'colors',
+  'showMatch', 'colors', 'commonCutoff',
   'stdMults', 'lenPct', 'lenBase', 'genMult', 'par',
   'fullMinEnabled', 'fullMinWords', 'fullTopEnabled', 'fullTopCount', 'fullTopPts',
 ];
@@ -3233,6 +3256,7 @@ function saveSettings() {
     maxRare:            settingMaxRare,
     maxDupes:           settingMaxDupes,
     antiCluster:        settingAntiCluster,
+    commonCutoff:       settingCommonCutoff,
     minWords:           QUALITY_MIN_WORDS,
     topCount:           QUALITY_TOP_COUNT,
     topPts:             QUALITY_MIN_TOP_PTS,
@@ -3276,6 +3300,7 @@ document.addEventListener('DOMContentLoaded', function loadSettings() {
     if (s.maxRare     != null) { settingMaxRare     = s.maxRare;     $('settingMaxRare').value     = s.maxRare;     }
     if (s.maxDupes    != null) { settingMaxDupes    = s.maxDupes;    $('settingMaxDupes').value    = s.maxDupes;    }
     if (s.antiCluster != null) { settingAntiCluster = Boolean(s.antiCluster); $('settingAntiCluster').checked = settingAntiCluster; }
+    if (s.commonCutoff != null) { settingCommonCutoff = s.commonCutoff; $('settingCommonCutoff').value = s.commonCutoff; rebuildCommonSet(); }
     if (s.minWords  != null) { QUALITY_MIN_WORDS   = s.minWords;  $('settingMinWords').value = s.minWords;  }
     if (s.topCount  != null) { QUALITY_TOP_COUNT   = s.topCount;  $('settingTopCount').value = s.topCount;  }
     if (s.topPts    != null) { QUALITY_MIN_TOP_PTS = s.topPts;    $('settingTopPts').value   = s.topPts;    }
@@ -3434,9 +3459,19 @@ startIntro();
     <div class="overlay-box" style="max-height:88vh;overflow-y:auto">
       <h2 style="text-align:center;margin-bottom:14px">⚙ Qualified Board</h2>
 
-      <!-- ── Common Word List (Word10K) ── -->
+      <!-- ── Common Word List (frequency-ranked) ── -->
       <div class="setting-section">
         <div class="setting-section-title">Common Word List</div>
+        <p class="setting-desc" style="margin:0 0 8px">
+          Words are ranked by real-world frequency (~32,000 ranked).
+          The cutoff sets how many count as "common" — everything
+          past it shows as a rare (yellow) word.
+        </p>
+        <div class="setting-number-row">
+          <span class="setting-number-label">Common cutoff (top N words)</span>
+          <input type="number" class="setting-number" id="settingCommonCutoff"
+                 min="100" max="40000" step="500" value="10000" onchange="onBoardGateChange()">
+        </div>
         <div class="setting-number-row">
           <span class="setting-number-label">Min common words on board</span>
           <input type="number" class="setting-number" id="settingMinWords"
