@@ -872,7 +872,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.76</span>
+      <span class="version-label">v0.77</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1148,7 +1148,7 @@
 <script>
 // Single source of truth for the displayed version (sw.js CACHE_NAME
 // must be bumped in step with it on every build).
-const APP_VERSION = 'v0.76';
+const APP_VERSION = 'v0.77';
 document.querySelector('.version-label').textContent = APP_VERSION;
 
 // ═══════════════════════════════════════════════════════════
@@ -1298,11 +1298,15 @@ let WORD10K = new Set(BUILTIN_WORD10K.trim().split(/\s+/).filter(w => w.length >
 // (OpenSubtitles corpus).  The "common" set is the first
 // settingCommonCutoff entries, so the cutoff is tunable; the
 // unranked built-in list above is the offline/first-load fallback.
-let COMMON_RANKED = null;   // ranked array when common.txt loaded
+let COMMON_RANKED  = null;   // ranked array when common.txt loaded
+let COMMON_RANK_MAP = null;  // word → 1-based frequency rank (for par)
 
 function rebuildCommonSet() {
   if (COMMON_RANKED) {
     WORD10K = new Set(COMMON_RANKED.slice(0, settingCommonCutoff));
+    if (!COMMON_RANK_MAP) {
+      COMMON_RANK_MAP = new Map(COMMON_RANKED.map((w, i) => [w, i + 1]));
+    }
   }
   // no ranked list → keep the builtin fallback set as-is
 }
@@ -1516,15 +1520,21 @@ function activePlayer() {
 
 // ── Par model constants (all editable in the ⚙ Par menu) ──
 // Length buckets are 2,3,4,5,6,7 where 7 means "7 or more".
+// Games recorded under older par models never feed Expected — after a
+// recalibration everyone restarts at Expected = Par and converges
+// within expWindow games.
+const PAR_MODEL_VER = 2;
+
 const PAR_DEFAULTS = {
-  probLen:  { 2: 0.60, 3: 0.50, 4: 0.24, 5: 0.10, 6: 0.05, 7: 0.02 },  // base find chance
-  capLen:   { 2: 15, 3: 15, 4: 15, 5: 4, 6: 1.5, 7: 1 },  // max expected finds @ 2:00
-  obscureBase:  0.25,   // penalty factor for a 2-letter word outside Word10K …
-  obscureDecay: 0.70,   // … multiplied by this for every letter beyond 2
+  // Model v2, fitted to 479 logged family games (Nov 2026).
+  // Expected finds of length L = findFactor × U^satExponent, where U
+  // is the rank/turn-weighted count of available words — finds grow
+  // with the square root of board richness instead of capping.
+  findFactor: { 2: 0.52, 3: 4.23, 4: 1.21, 5: 1.86, 6: 0.33, 7: 0.06 },
+  satExponent:  0.5,
   turnDamping:  0.12,   // per direction-change damping of a word's swipe path
   timeExponent: 0.7,    // par scales with (time/120)^exponent
-  histWindow:   20,     // handicap looks at the last N recorded games
-  bestOf:       8,      // … and keeps the best half, at most this many
+  expWindow:    10,     // Expected = par × median of last N score/par ratios
   showPar:      false,  // header shows board Par instead of player Expected
 };
 
@@ -1533,8 +1543,20 @@ let parSettings = clonePar(PAR_DEFAULTS);
 
 function lenBucket(word) { return Math.min(word.length, 7); }
 
-function obscureFactor(L) {
-  return parSettings.obscureBase * Math.pow(parSettings.obscureDecay, L - 2);
+// Relative findability by frequency rank, measured from the family
+// logs (find-rate of each rank band vs the top-2000 band).  Uses the
+// full ranked list, independent of the display cutoff.
+const RANK_FACTORS = [
+  [2000, 1.00], [5000, 0.97], [10000, 0.89],
+  [17000, 0.71], [33000, 0.61], [Infinity, 0.32],
+];
+
+function rankFactor(w) {
+  if (!COMMON_RANK_MAP) return WORD10K.has(w) ? 1.0 : 0.32;   // offline fallback
+  const r = COMMON_RANK_MAP.get(w);
+  if (r === undefined) return 0.32;
+  for (const [lim, f] of RANK_FACTORS) if (r <= lim) return f;
+  return 0.32;
 }
 
 // Number of direction changes along a tile path
@@ -1549,72 +1571,75 @@ function pathTurns(path) {
   return turns;
 }
 
-// The games that feed the handicap: same scoring signature, last
-// histWindow, ranked by score/par, best half kept (max bestOf).
-function selectProfileGames(pl) {
-  if (!pl) return [];
-  const sig   = scoringSignature();
-  const games = pl.games.filter(g => g.sig === sig && (g.par > 0 || g.potential > 0))
-                        .slice(-parSettings.histWindow);
-  const ranked = [...games].sort((a, b) =>
-    b.score / (b.par || b.potential) - a.score / (a.par || a.potential));
-  return ranked.slice(0, Math.max(1, Math.min(parSettings.bestOf, Math.ceil(ranked.length / 2))));
+// Scoring-only signature — time limit excluded, because par already
+// normalizes for time, so ratios from different time limits pool.
+function scoreSigPrefix() {
+  return [settingStdMults ? 1 : 0, settingLenPct, settingLenBase, settingGenMult].join('|');
+}
+function gameSigPrefix(g) {
+  return (g.sig || '').split('|').slice(0, 4).join('|');
 }
 
-// ── The par model ─────────────────────────────────────────
-// PAR (average player): every word's value × find-probability
-// (length base × obscure penalty × turn damping), uniformly
-// squashed per length so expected finds never exceed that
-// length's cap, then scaled by time.
-// EXPECTED (this player): same board data, but find rates and
-// per-length ceilings come from the player's recorded history
-// (blended toward the defaults while history is small).
+// The ratios feeding Expected: this player's last expWindow games
+// under the current par model and scoring rules.
+function profileRatios(pl) {
+  if (!pl) return [];
+  const pre = scoreSigPrefix();
+  return pl.games
+    .filter(g => g.pm === PAR_MODEL_VER && g.par > 0 && gameSigPrefix(g) === pre)
+    .slice(-parSettings.expWindow)
+    .map(g => g.score / g.par);
+}
+
+// Median of the ratio window → the player beats Expected about half
+// the time by construction.  Cold start (< 3 games): Expected = Par.
+function playerRatioMedian(pl) {
+  const rs = profileRatios(pl);
+  if (rs.length < 3) return 1;
+  const s = [...rs].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  const med = s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  return Math.min(3, Math.max(0.2, med));
+}
+
+// ── The par model (v2) ────────────────────────────────────
+// PAR (family-average player): per length, U = Σ rank/turn weights
+// over available words and V = Σ weight × points; expected points =
+// findFactor × U^(satExponent−1) × V, time-scaled.  Fitted so the
+// equal-weighted average player scores par.
+// EXPECTED (this player): par × rolling median of their recent
+// score/par ratios — a target they beat about half the time.
 function computeParModel() {
   const tf     = Math.pow(settingGameTime / 120, parSettings.timeExponent);
   const perLen = {};
 
   for (const [w, pts] of allPossibleWords) {
     const L = lenBucket(w);
-    let p = parSettings.probLen[L] ?? 0.02;
-    if (!WORD10K.has(w)) p *= obscureFactor(L);
+    let u = rankFactor(w);
     const path = allWordPaths.get(w);
-    if (path) p *= 1 / (1 + parSettings.turnDamping * pathTurns(path));
-    const b = (perLen[L] ??= { avail: 0, rawFinds: 0, rawPts: 0 });
+    if (path) u *= 1 / (1 + parSettings.turnDamping * pathTurns(path));
+    const b = (perLen[L] ??= { avail: 0, U: 0, V: 0 });
     b.avail++;
-    b.rawFinds += p;
-    b.rawPts   += pts * p;
+    b.U += u;
+    b.V += u * pts;
   }
 
   let par = 0;
   for (const L of Object.keys(perLen)) {
     const b = perLen[L];
-    const s = Math.min(1, (parSettings.capLen[L] ?? 99) / (b.rawFinds || 1e-9));
-    b.expFinds = b.rawFinds * s * tf;
-    b.expPts   = b.rawPts   * s * tf;
+    const a = parSettings.findFactor[L] ?? 0;
+    const scale = b.U > 0 ? a * Math.pow(b.U, parSettings.satExponent - 1) : 0;
+    b.expFinds = scale * b.U * tf;
+    b.expPts   = scale * b.V * tf;
     par += b.expPts;
   }
 
-  // Player expectation from the per-length history profile
-  const sel = selectProfileGames(activePlayer());
-  const n   = sel.length;
-  const wgt = n / (n + 4);          // shrink toward defaults while history is small
+  const ratio = playerRatioMedian(activePlayer());
   let expected = 0;
   for (const L of Object.keys(perLen)) {
     const b = perLen[L];
-    let f = 0, a = 0;
-    for (const g of sel) {
-      const fa = g.byLen?.[L];
-      if (fa) { f += fa[0]; a += fa[1]; }
-    }
-    const obsRate = a > 0 ? f / a : 0;                       // observed find rate
-    const defRate = b.avail > 0 ? b.expFinds / b.avail : 0;  // par's rate on THIS board
-    const rate    = n > 0 ? wgt * obsRate + (1 - wgt) * defRate : defRate;
-    const obsTyp  = n > 0 ? f / n : 0;                       // typical count per game
-    const defTyp  = (parSettings.capLen[L] ?? 99) * tf;
-    const typ     = n > 0 ? wgt * obsTyp + (1 - wgt) * defTyp : defTyp;
-    b.playerExpFinds = Math.min(rate * b.avail, typ);
-    const ptsPerFind = b.expFinds > 1e-9 ? b.expPts / b.expFinds : 0;
-    b.playerExpPts   = b.playerExpFinds * ptsPerFind;
+    b.playerExpFinds = b.expFinds * ratio;
+    b.playerExpPts   = b.expPts   * ratio;
     expected += b.playerExpPts;
   }
 
@@ -1644,13 +1669,10 @@ function matchingGames(pl) {
   return pl ? pl.games.filter(g => g.sig === sig) : [];
 }
 
-// Overall performance factor (for the stats display): mean of the
-// selected best games' score/par, 1 = plays exactly to par.
+// Overall performance factor (for the stats display): the same rolling
+// median that drives Expected.  1 = plays exactly to par.
 function perfFactor(pl) {
-  const sel = selectProfileGames(pl);
-  if (!sel.length) return 1;
-  const m = sel.reduce((s, g) => s + g.score / (g.par || g.potential || 1), 0) / sel.length;
-  return Math.min(3, Math.max(0.2, m));
+  return playerRatioMedian(pl);
 }
 
 let parModel       = null;   // full per-length model for the current board
@@ -1685,7 +1707,7 @@ function recordGameForPlayer() {
   }
   pl.games.push({
     t: Date.now(), seed: currentSeed, score: gameScore,
-    par: boardParValue, exp: currentParValue,
+    par: boardParValue, exp: currentParValue, pm: PAR_MODEL_VER,
     byLen, common, obscure,
     sig: scoringSignature(), time: settingGameTime,
   });
@@ -3081,15 +3103,12 @@ function closeParSettings() {
 // Write parSettings values into the modal's inputs
 function syncParInputs() {
   for (let L = 2; L <= 7; L++) {
-    $('parProb' + L).value = Math.round(parSettings.probLen[L] * 1000) / 10;   // as %
-    $('parCap'  + L).value = parSettings.capLen[L];
+    $('parFF' + L).value = parSettings.findFactor[L];
   }
-  $('parObsBase').value  = Math.round(parSettings.obscureBase  * 100);
-  $('parObsDecay').value = Math.round(parSettings.obscureDecay * 100);
+  $('parSatExp').value   = parSettings.satExponent;
   $('parTurnDamp').value = parSettings.turnDamping;
   $('parTimeExp').value  = parSettings.timeExponent;
-  $('parHistWin').value  = parSettings.histWindow;
-  $('parBestOf').value   = parSettings.bestOf;
+  $('parExpWin').value   = parSettings.expWindow;
   $('parShowPar').checked = parSettings.showPar;
 }
 
@@ -3103,15 +3122,12 @@ function onParChange() {
     return v;
   };
   for (let L = 2; L <= 7; L++) {
-    parSettings.probLen[L] = num('parProb' + L, 0, 100, PAR_DEFAULTS.probLen[L] * 100) / 100;
-    parSettings.capLen[L]  = num('parCap'  + L, 0, 99,  PAR_DEFAULTS.capLen[L]);
+    parSettings.findFactor[L] = num('parFF' + L, 0, 20, PAR_DEFAULTS.findFactor[L]);
   }
-  parSettings.obscureBase  = num('parObsBase',  0, 100, PAR_DEFAULTS.obscureBase  * 100) / 100;
-  parSettings.obscureDecay = num('parObsDecay', 1, 100, PAR_DEFAULTS.obscureDecay * 100) / 100;
-  parSettings.turnDamping  = num('parTurnDamp', 0, 1,   PAR_DEFAULTS.turnDamping);
-  parSettings.timeExponent = num('parTimeExp', 0.1, 2,  PAR_DEFAULTS.timeExponent);
-  parSettings.histWindow   = Math.round(num('parHistWin', 1, 100, PAR_DEFAULTS.histWindow));
-  parSettings.bestOf       = Math.round(num('parBestOf',  1, 20,  PAR_DEFAULTS.bestOf));
+  parSettings.satExponent  = num('parSatExp', 0.1, 1,  PAR_DEFAULTS.satExponent);
+  parSettings.turnDamping  = num('parTurnDamp', 0, 1,  PAR_DEFAULTS.turnDamping);
+  parSettings.timeExponent = num('parTimeExp', 0.1, 2, PAR_DEFAULTS.timeExponent);
+  parSettings.expWindow    = Math.round(num('parExpWin', 3, 50, PAR_DEFAULTS.expWindow));
   parSettings.showPar      = $('parShowPar').checked;
   saveSettings();
   if (gameActive && parModel) computeAndShowPar();   // live refresh mid-game
@@ -3417,11 +3433,13 @@ document.addEventListener('DOMContentLoaded', function loadSettings() {
     }
     if (s.scoreLeft     != null) { settingScoreLeft          = Boolean(s.scoreLeft);     $('settingScoreLeft').checked          = settingScoreLeft;
                                    $('wordDisplay').classList.toggle('score-left', settingScoreLeft); }
-    if (s.par != null && typeof s.par === 'object') {
+    // Only accept stored par settings from the current model —
+    // pre-v2 shapes (probLen/capLen) are ignored so the recalibrated
+    // defaults take over.
+    if (s.par != null && typeof s.par === 'object' && s.par.findFactor) {
       const d = clonePar(PAR_DEFAULTS);
       parSettings = { ...d, ...s.par,
-        probLen: { ...d.probLen, ...(s.par.probLen || {}) },
-        capLen:  { ...d.capLen,  ...(s.par.capLen  || {}) } };
+        findFactor: { ...d.findFactor, ...(s.par.findFactor || {}) } };
       syncParInputs();
     }
     if (s.stdMults != null) { settingStdMults = Boolean(s.stdMults); $('settingStdMults').checked = settingStdMults; }
@@ -3802,54 +3820,26 @@ startIntro();
       </div>
 
       <div class="setting-section">
-        <div class="setting-section-title">Base Find Chance (%)</div>
+        <div class="setting-section-title">Find Factors (model v2)</div>
         <p class="setting-desc" style="margin:0 0 8px">
-          Chance an average player finds a common word of each length.
+          Expected finds per length = factor × (weighted available
+          words)^saturation. Fitted to the family game logs so Par
+          matches the average player.
         </p>
         <div class="setting-number-row"><span class="setting-number-label">2 letters</span>
-          <input type="number" class="setting-number" id="parProb2" min="0" max="100" step="1" onchange="onParChange()"></div>
+          <input type="number" class="setting-number" id="parFF2" min="0" max="20" step="0.01" onchange="onParChange()"></div>
         <div class="setting-number-row"><span class="setting-number-label">3 letters</span>
-          <input type="number" class="setting-number" id="parProb3" min="0" max="100" step="1" onchange="onParChange()"></div>
+          <input type="number" class="setting-number" id="parFF3" min="0" max="20" step="0.01" onchange="onParChange()"></div>
         <div class="setting-number-row"><span class="setting-number-label">4 letters</span>
-          <input type="number" class="setting-number" id="parProb4" min="0" max="100" step="1" onchange="onParChange()"></div>
+          <input type="number" class="setting-number" id="parFF4" min="0" max="20" step="0.01" onchange="onParChange()"></div>
         <div class="setting-number-row"><span class="setting-number-label">5 letters</span>
-          <input type="number" class="setting-number" id="parProb5" min="0" max="100" step="1" onchange="onParChange()"></div>
+          <input type="number" class="setting-number" id="parFF5" min="0" max="20" step="0.01" onchange="onParChange()"></div>
         <div class="setting-number-row"><span class="setting-number-label">6 letters</span>
-          <input type="number" class="setting-number" id="parProb6" min="0" max="100" step="0.5" onchange="onParChange()"></div>
+          <input type="number" class="setting-number" id="parFF6" min="0" max="20" step="0.01" onchange="onParChange()"></div>
         <div class="setting-number-row"><span class="setting-number-label">7+ letters</span>
-          <input type="number" class="setting-number" id="parProb7" min="0" max="100" step="0.5" onchange="onParChange()"></div>
-      </div>
-
-      <div class="setting-section">
-        <div class="setting-section-title">Max Expected Finds</div>
-        <p class="setting-desc" style="margin:0 0 8px">
-          Ceiling on expected words per length in a 2:00 game — rich
-          boards squash down to these. Scales with the time limit.
-        </p>
-        <div class="setting-number-row"><span class="setting-number-label">2 letters</span>
-          <input type="number" class="setting-number" id="parCap2" min="0" max="99" step="0.5" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">3 letters</span>
-          <input type="number" class="setting-number" id="parCap3" min="0" max="99" step="0.5" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">4 letters</span>
-          <input type="number" class="setting-number" id="parCap4" min="0" max="99" step="0.5" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">5 letters</span>
-          <input type="number" class="setting-number" id="parCap5" min="0" max="99" step="0.5" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">6 letters</span>
-          <input type="number" class="setting-number" id="parCap6" min="0" max="99" step="0.5" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">7+ letters</span>
-          <input type="number" class="setting-number" id="parCap7" min="0" max="99" step="0.5" onchange="onParChange()"></div>
-      </div>
-
-      <div class="setting-section">
-        <div class="setting-section-title">Rare-Word Penalty</div>
-        <p class="setting-desc" style="margin:0 0 8px">
-          Words outside the common word list are multiplied by
-          Base% × Decay%^(letters−2) — longer rare words count less.
-        </p>
-        <div class="setting-number-row"><span class="setting-number-label">Base (%)</span>
-          <input type="number" class="setting-number" id="parObsBase" min="0" max="100" step="1" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">Decay per letter (%)</span>
-          <input type="number" class="setting-number" id="parObsDecay" min="1" max="100" step="1" onchange="onParChange()"></div>
+          <input type="number" class="setting-number" id="parFF7" min="0" max="20" step="0.01" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">Saturation exponent</span>
+          <input type="number" class="setting-number" id="parSatExp" min="0.1" max="1" step="0.05" onchange="onParChange()"></div>
       </div>
 
       <div class="setting-section">
@@ -3858,10 +3848,8 @@ startIntro();
           <input type="number" class="setting-number" id="parTurnDamp" min="0" max="1" step="0.01" onchange="onParChange()"></div>
         <div class="setting-number-row"><span class="setting-number-label">Time exponent</span>
           <input type="number" class="setting-number" id="parTimeExp" min="0.1" max="2" step="0.1" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">Handicap window (games)</span>
-          <input type="number" class="setting-number" id="parHistWin" min="1" max="100" step="1" onchange="onParChange()"></div>
-        <div class="setting-number-row"><span class="setting-number-label">Best-of (games kept)</span>
-          <input type="number" class="setting-number" id="parBestOf" min="1" max="20" step="1" onchange="onParChange()"></div>
+        <div class="setting-number-row"><span class="setting-number-label">Expected window (games)</span>
+          <input type="number" class="setting-number" id="parExpWin" min="3" max="50" step="1" onchange="onParChange()"></div>
       </div>
 
       <div class="setting-section">
