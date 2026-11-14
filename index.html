@@ -872,7 +872,7 @@
                    a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
-      <span class="version-label">v0.77</span>
+      <span class="version-label">v0.78</span>
       <button class="new-btn" id="newGameBtn" onclick="onNewGameBtn()">New Game</button>
     </div>
   </div>
@@ -1148,7 +1148,7 @@
 <script>
 // Single source of truth for the displayed version (sw.js CACHE_NAME
 // must be bumped in step with it on every build).
-const APP_VERSION = 'v0.77';
+const APP_VERSION = 'v0.78';
 document.querySelector('.version-label').textContent = APP_VERSION;
 
 // ═══════════════════════════════════════════════════════════
@@ -1534,7 +1534,7 @@ const PAR_DEFAULTS = {
   satExponent:  0.5,
   turnDamping:  0.12,   // per direction-change damping of a word's swipe path
   timeExponent: 0.7,    // par scales with (time/120)^exponent
-  expWindow:    10,     // Expected = par × median of last N score/par ratios
+  expWindow:    25,     // Expected = par × median of last N score/par ratios
   showPar:      false,  // header shows board Par instead of player Expected
 };
 
